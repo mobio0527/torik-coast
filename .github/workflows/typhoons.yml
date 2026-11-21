@@ -1,34 +1,35 @@
-name: Probe history sources
+name: Build typhoon review
 on:
+  schedule:
+    - cron: "23 19 * * 0"   # Mondays 03:23 Taipei time
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - "scripts/probe_history.py"
+      - "scripts/build_typhoons.py"
+      - ".github/workflows/typhoons.yml"
 permissions:
   contents: write
 concurrency:
-  group: probe-history
+  group: typhoons
   cancel-in-progress: false
 jobs:
-  probe:
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Probe
-        env:
-          CWA_KEY: ${{ secrets.CWA_KEY }}
-        run: python3 scripts/probe_history.py
-      - name: Commit result
+      - name: Build
+        run: python3 scripts/build_typhoons.py
+      - name: Commit data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/probe_history.json
+          git add data/typhoons.json
           if git diff --cached --quiet; then
             echo "No change."
           else
-            git commit -m "probe: history sources $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
+            git commit -m "data: typhoon review $(TZ=Asia/Taipei date '+%Y-%m-%d %H:%M')"
             for i in 1 2 3 4; do
               git pull --rebase --autostash origin main && git push && break
               sleep 7
