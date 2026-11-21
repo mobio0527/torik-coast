@@ -118,7 +118,10 @@ def codis_day(st, day):
     rows = []
     for block in data.get("data") or []:
         for r in block.get("dts") or []:
-            g = lambda a, b: num((r.get(a) or {}).get(b))
+            def g(a, b, r=r):
+                v = num((r.get(a) or {}).get(b))
+                # negative codes mark trace rain or a missing reading; neither is a measurement
+                return None if (v is not None and v < 0 and a != "AirTemperature") else v
             rows.append({"t": (r.get("DataTime") or "")[:16] + "+08:00", "wind": g("WindSpeed", "Mean"),
                          "wind_dir": g("WindDirection", "Mean"), "gust": g("PeakGust", "Maximum"),
                          "pressure": g("StationPressure", "Instantaneous"), "rain": g("Precipitation", "Accumulation"),
@@ -167,7 +170,6 @@ def main():
                             "min_pressure_hpa": num(r.get("min_pressure")), "max_wind_ms": num(r.get("max_wind_speed")),
                             "radius7_km": num(r.get("max_range7")), "radius10_km": num(r.get("max_range10"))},
             "path_category": (r.get("official_path_category") or "").strip() or None,
-            "source_row": r,
         }
         t = trk.get((r["id"][:4], r["eng_name"].strip().upper()))
         if t:
@@ -198,6 +200,14 @@ def main():
         storms.append(storm)
         print(storm["id"], storm["eng"], storm.get("closest"), {k: len(v) for k, v in storm["obs"].items()})
 
+    try:   # station altitude and distance as given by the live weather feed
+        with open(os.path.join(ROOT, "latest.json"), encoding="utf-8") as f:
+            live = {w["id"]: w for w in json.load(f).get("weather") or []}
+        for st in STATIONS:
+            if st["id"] in live:
+                st["alt"], st["km"] = live[st["id"]].get("alt"), live[st["id"]].get("km", st["km"])
+    except Exception:
+        pass
     out = {
         "updated": now.isoformat(timespec="seconds"),
         "period": {"from": since.date().isoformat(), "to": now.date().isoformat()},
