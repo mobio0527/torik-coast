@@ -92,6 +92,11 @@ dl { margin: 0; }
 .live .warn { color: var(--accent); font-weight: 700; }
 .live .facts { border-radius: 4px; }
 #tide-plot { width: 100%; height: 300px; }
+#ty-plot { width: 100%; height: 470px; }
+#ty-map { width: 100%; height: 340px; }
+.live .row > .label { min-width: 2.6em; }
+.srckey i.band { background: color-mix(in srgb, var(--ink) 9%, transparent); border-color: var(--rule); }
+.srckey i.dash { width: 0; height: 14px; border: 0; border-left: 2px dotted var(--ink-2); border-radius: 0; margin: 0 6px; }
 .rows { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; font-variant-numeric: tabular-nums; }
 .rows li { display: flex; gap: 12px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
 .rows li:last-child { border-bottom: 0; }
@@ -179,6 +184,26 @@ td small { color: var(--ink-2); }
     <p class="hint">資料來源：交通部中央氣象署開放資料平臺。排程每小時向氣象署取兩次資料，各測站本身的觀測時間以表中所列為準。</p>
   </section>
 
+  <section class="live" aria-label="颱風回顧">
+    <h2>颱風回顧：過去一年</h2>
+    <p class="hint" id="ty-status">正在讀取颱風資料…</p>
+    <div class="scroll"><table id="ty-table"></table></div>
+    <h3 id="ty-title">逐時觀測</h3>
+    <div class="row"><span class="label">颱風</span><div class="btns" id="ty-pick"></div></div>
+    <div class="row"><span class="label">測站</span><div class="btns" id="ty-stn"></div></div>
+    <dl class="facts" id="ty-tiles"></dl>
+    <div id="ty-plot"></div>
+    <div class="srckey on" aria-label="圖例">
+      <span><i class="band"></i>灰底：海上颱風警報期間</span>
+      <span id="ty-key-closest"><i class="dash"></i>虛線：颱風中心最接近都歷</span>
+    </div>
+    <p class="hint" id="ty-note"></p>
+    <h3>路徑</h3>
+    <div id="ty-map"></div>
+    <p class="hint" id="ty-map-note"></p>
+    <p class="hint">資料來源：中央氣象署颱風資料庫（警報期間、近臺強度）、中央氣象署 CODiS 氣候觀測資料查詢服務（測站逐時觀測）、NOAA IBTrACS v04r01（路徑）。每週重新整理一次。</p>
+  </section>
+
   <section class="notes">
     <h2>讀圖須知</h2>
     <ul>
@@ -188,6 +213,7 @@ td small { color: var(--ink-2); }
       <li>標示的「都歷」是 23.0236°N, 121.3340°E，聚落東南側的海岸。</li>
       <li>即時數值屬於各測站所在位置，不是都歷海灘本身。每個數值都標了測站名稱與距離。</li>
       <li>潮汐預報只算天文潮，沒有考慮天氣。颱風或強風時，實測潮位會和預報有明顯差距。</li>
+      <li>颱風回顧只有風、氣壓、雨量。潮位與浪高的歷史資料目前沒有取得，所以看不到颱風期間的海況。</li>
       <li>GEBCO 網格與本頁的即時資料都不可用於航行或任何與海上安全有關的用途。</li>
     </ul>
   </section>
@@ -358,7 +384,8 @@ document.getElementById('views').addEventListener('click', e => {
 
 // Redraw when the viewer's theme changes so axis and label colours follow the tokens.
 let LIVE = null;
-const retheme = () => { if (ready) { ready = false; draw(); } if (LIVE) renderTide(LIVE); };
+let TY = null;
+const retheme = () => { if (ready) { ready = false; draw(); } if (LIVE) renderTide(LIVE); if (TY) renderTyphoon(); };
 new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
 
@@ -522,6 +549,147 @@ fetch('data/latest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : Pro
   STATIONS = (d.marine || []).filter(s => s.lon >= GRID.lon[0] && s.lon <= GRID.lon[GRID.lon.length - 1] && s.lat <= GRID.lat[0] && s.lat >= GRID.lat[GRID.lat.length - 1]);
   if (ready) { ready = false; draw(); }
 }).catch(() => { $('live-status').textContent = '讀不到即時資料檔。排程可能尚未執行，或這一次取資料失敗。'; });
+
+// ---------- Typhoon review from data/typhoons.json (rebuilt weekly by a scheduled job) ----------
+let tySel = null, tyStn = null;
+const BEAUFORT = [0.2, 1.5, 3.3, 5.4, 7.9, 10.7, 13.8, 17.1, 20.7, 24.4, 28.4, 32.6, 36.9, 41.4, 46.1, 50.9, 56.0, 61.2];
+const scale = v => { let i = BEAUFORT.findIndex(top => v <= top); return (i < 0 ? 17 : i) + ' 級'; };
+const day = iso => iso.slice(5, 7) + '/' + iso.slice(8, 10);
+const kmFrom = (lat, lon) => {
+  const r = Math.PI / 180, a = Math.sin((lat - DULI.lat) * r / 2) ** 2 + Math.cos(DULI.lat * r) * Math.cos(lat * r) * Math.sin((lon - DULI.lon) * r / 2) ** 2;
+  return 6371 * 2 * Math.asin(Math.sqrt(a));
+};
+const peakText = (p, unit, n) => p ? fix(p.value, n) + ' ' + unit : '—';
+const tyName = s => (s.name || s.eng) + '（' + s.eng.charAt(0) + s.eng.slice(1).toLowerCase() + '）';
+
+function pressButtons(box, items, current, onPick) {
+  box.textContent = '';
+  items.forEach(it => {
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = it.label;
+    b.setAttribute('aria-pressed', String(it.id === current));
+    b.addEventListener('click', () => onPick(it.id));
+    box.append(b);
+  });
+}
+
+function renderTyphoonTable() {
+  const t = $('ty-table'), S = TY.stations; t.textContent = '';
+  const head = ['颱風', '近臺強度', '海上警報期間', '距都歷最近'];
+  S.forEach(st => head.push(st.name + '最大陣風'));
+  S.forEach(st => head.push(st.name + '最低氣壓'));
+  S.forEach(st => head.push(st.name + '雨量'));
+  t.append(row('th', head));
+  TY.storms.forEach(s => {
+    const cells = [tyName(s), s.near_taiwan.intensity || '—', when(s.warning.start) + ' – ' + when(s.warning.end),
+      s.closest ? s.closest.km + ' 公里（' + when(s.closest.t) + '）' : '—'];
+    S.forEach(st => { const p = s.summary[st.id].max_gust; cells.push(p ? fix(p.value, 1) + ' 公尺/秒（' + scale(p.value) + '）' : '—'); });
+    S.forEach(st => cells.push(peakText(s.summary[st.id].min_pressure, '百帕', 1)));
+    S.forEach(st => { const m = s.summary[st.id]; cells.push(isNum(m.rain_total) ? fix(m.rain_total, 1) + ' 毫米' : '—'); });
+    t.append(row('td', cells));
+  });
+}
+
+function renderTyphoon() {
+  const s = TY.storms.find(x => x.id === tySel), st = TY.stations.find(x => x.id === tyStn);
+  pressButtons($('ty-pick'), TY.storms.map(x => ({ id: x.id, label: day(x.warning.start) + ' ' + (x.name || x.eng) })), tySel, id => { tySel = id; renderTyphoon(); });
+  pressButtons($('ty-stn'), TY.stations.map(x => ({ id: x.id, label: x.name + '站（' + x.km + ' 公里）' })), tyStn, id => { tyStn = id; renderTyphoon(); });
+  const m = s.summary[st.id], rows = s.obs[st.id] || [], nt = s.near_taiwan;
+  $('ty-title').textContent = '逐時觀測：' + tyName(s) + '，' + st.name + '站';
+
+  const box = $('ty-tiles'); box.textContent = '';
+  const at = p => p ? when(p.t) : '警報期間沒有讀數';
+  box.append(tile('最大陣風', m.max_gust ? fix(m.max_gust.value, 1) + ' 公尺/秒' : '—', (m.max_gust ? scale(m.max_gust.value) + ' · ' : '') + at(m.max_gust)));
+  box.append(tile('最大平均風速', m.max_wind ? fix(m.max_wind.value, 1) + ' 公尺/秒' : '—', (m.max_wind ? scale(m.max_wind.value) + ' · ' : '') + at(m.max_wind)));
+  box.append(tile('最低測站氣壓', peakText(m.min_pressure, '百帕', 1), at(m.min_pressure)));
+  box.append(tile('警報期間雨量', isNum(m.rain_total) ? fix(m.rain_total, 1) + ' 毫米' : '—', '有讀數 ' + m.rain_hours + ' / ' + m.hours + ' 小時'));
+  if (s.closest) box.append(tile('中心距都歷最近', s.closest.km + ' 公里', when(s.closest.t) + ' · 依暫定路徑計算'));
+  const near = [];
+  if (isNum(nt.max_wind_ms)) near.push('最大風速 ' + fix(nt.max_wind_ms, 0) + ' 公尺/秒');
+  if (isNum(nt.min_pressure_hpa)) near.push(fix(nt.min_pressure_hpa, 0) + ' 百帕');
+  if (isNum(nt.radius7_km)) near.push('7 級風半徑 ' + fix(nt.radius7_km, 0) + ' 公里');
+  box.append(tile('近臺強度（氣象署）', nt.intensity || '—', near.join(' · ')));
+
+  const ink = css('--ink'), ink2 = css('--ink-2'), rule = css('--rule'), c1 = css('--series-1'), c2 = css('--series-2');
+  const x = rows.map(r => naive(r.t));
+  const axis = dom => ({ domain: dom, gridcolor: rule, zerolinecolor: rule, linecolor: rule, tickfont: { color: ink2 }, fixedrange: true, automargin: true });
+  const label = (text, y) => ({ xref: 'paper', yref: 'paper', x: 0, y, xanchor: 'left', yanchor: 'bottom', text, showarrow: false, font: { size: 12, color: ink2 } });
+  const w0 = naive(s.warning.start), w1 = naive(s.warning.end);
+  const shapes = [{ type: 'rect', xref: 'x', yref: 'paper', x0: w0, x1: w1, y0: 0, y1: 1, fillcolor: ink, opacity: 0.07, line: { width: 0 }, layer: 'below' }];
+  const notes = [label('風速（公尺/秒）', 1.0), label('測站氣壓（百帕）', 0.5), label('時雨量（毫米）', 0.2)];
+  const hasClosest = !!(s.closest && x.length && naive(s.closest.t) >= x[0] && naive(s.closest.t) <= x[x.length - 1]);
+  if (hasClosest) {
+    const cx = naive(s.closest.t);
+    shapes.push({ type: 'line', xref: 'x', yref: 'paper', x0: cx, x1: cx, y0: 0, y1: 1, line: { color: ink2, width: 1, dash: 'dot' } });
+  }
+  $('ty-key-closest').style.display = hasClosest ? '' : 'none';
+  Plotly.newPlot('ty-plot', [
+    { type: 'scatter', mode: 'lines', name: '最大陣風', x, y: rows.map(r => r.gust), line: { color: c2, width: 2 }, connectgaps: false,
+      hovertemplate: '陣風 <b>%{y:.1f}</b> 公尺/秒<extra></extra>' },
+    { type: 'scatter', mode: 'lines', name: '平均風速', x, y: rows.map(r => r.wind), line: { color: c1, width: 2 }, connectgaps: false,
+      hovertemplate: '平均 <b>%{y:.1f}</b> 公尺/秒<extra></extra>' },
+    { type: 'scatter', mode: 'lines', name: '測站氣壓', x, y: rows.map(r => r.pressure), yaxis: 'y2', line: { color: ink2, width: 2 }, showlegend: false, connectgaps: false,
+      hovertemplate: '氣壓 <b>%{y:.1f}</b> 百帕<extra></extra>' },
+    { type: 'bar', name: '時雨量', x, y: rows.map(r => r.rain), yaxis: 'y3', marker: { color: ink2 }, showlegend: false,
+      hovertemplate: '雨量 <b>%{y:.1f}</b> 毫米<extra></extra>' }
+  ], {
+    margin: { l: 40, r: 8, t: 46, b: 34 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: css('--font-body'), color: ink, size: 12 }, bargap: 0.25,
+    legend: { orientation: 'h', x: 1, xanchor: 'right', y: 1.0, yanchor: 'bottom', font: { size: 12, color: ink } },
+    hovermode: 'x unified', hoversubplots: 'axis',
+    xaxis: { type: 'date', tickformat: '%m/%d<br>%H:%M', gridcolor: rule, linecolor: rule, tickfont: { color: ink2 }, fixedrange: true, anchor: 'y3' },
+    yaxis: Object.assign(axis([0.6, 1.0]), { rangemode: 'tozero' }), yaxis2: axis([0.3, 0.5]), yaxis3: Object.assign(axis([0, 0.2]), { rangemode: 'tozero' }),
+    shapes, annotations: notes,
+    hoverlabel: { bgcolor: css('--panel'), bordercolor: rule, font: { color: ink, size: 13 } }
+  }, { responsive: true, displayModeBar: false });
+
+  const alt = isNum(st.alt) ? '，海拔 ' + fix(st.alt, 0) + ' 公尺' : '';
+  $('ty-note').textContent = st.name + '站距都歷 ' + st.km + ' 公里' + alt + '。每個點是一小時：陣風取該小時內的最大瞬間風，雨量是該小時累積。' +
+    '氣壓是測站所在高度的讀數，沒有換算到海平面，所以兩站不能直接比高低。上方的最大、最小值與雨量只算海上警報期間。雨跡與缺測不計入雨量。';
+
+  // track map
+  const geoTraces = [];
+  TY.storms.forEach(o => {
+    if (!o.track) return;
+    const on = o.id === tySel, r = o.track.rows;
+    geoTraces.push({
+      type: 'scattergeo', mode: on ? 'lines+markers' : 'lines', name: o.name || o.eng, showlegend: false,
+      lon: r.map(p => p[2]), lat: r.map(p => p[1]),
+      text: r.map(p => (o.name || o.eng) + ' ' + when(p[0]) + '<br>距都歷 ' + Math.round(kmFrom(p[1], p[2])) + ' 公里'),
+      hovertemplate: '%{text}<extra></extra>',
+      line: { color: on ? c2 : ink2, width: on ? 2.5 : 1 }, opacity: on ? 1 : 0.55,
+      marker: { size: 5, color: c2 }
+    });
+  });
+  if (s.closest) geoTraces.push({
+    type: 'scattergeo', mode: 'markers+text', showlegend: false, lon: [s.closest.lon], lat: [s.closest.lat],
+    text: ['最接近 ' + s.closest.km + ' 公里'], textposition: 'middle right', textfont: { size: 12, color: ink },
+    marker: { size: 12, color: 'rgba(0,0,0,0)', line: { color: ink, width: 2 } }, hoverinfo: 'skip'
+  });
+  geoTraces.push({
+    type: 'scattergeo', mode: 'markers+text', showlegend: false, lon: [DULI.lon], lat: [DULI.lat], text: ['都歷'],
+    textposition: 'middle left', textfont: { size: 12, color: ink }, marker: { size: 8, symbol: 'diamond', color: ink }, hoverinfo: 'skip'
+  });
+  Plotly.newPlot('ty-map', geoTraces, {
+    margin: { l: 0, r: 0, t: 0, b: 0 }, paper_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: css('--font-body'), color: ink, size: 12 },
+    geo: { projection: { type: 'mercator' }, resolution: 50, bgcolor: 'rgba(0,0,0,0)', showframe: false,
+      lonaxis: { range: [112, 136], showgrid: true, gridcolor: rule, dtick: 4 }, lataxis: { range: [13, 33], showgrid: true, gridcolor: rule, dtick: 4 },
+      showland: true, landcolor: rule, showocean: false, showlakes: false, showcountries: false,
+      showcoastlines: true, coastlinecolor: ink2, coastlinewidth: 0.8 },
+    hoverlabel: { bgcolor: css('--panel'), bordercolor: rule, font: { color: ink, size: 13 } }
+  }, { responsive: true, displayModeBar: false, scrollZoom: false });
+  const prov = s.track && /PROVISIONAL/i.test(s.track.type || '') ? '這個颱風的路徑在 IBTrACS 標示為暫定值，日後可能修正。' : '';
+  $('ty-map-note').textContent = '橘線是選取的颱風，灰線是同期間其他有發警報的颱風，每個點間隔 3 小時。路徑取自 NOAA IBTrACS，不是氣象署的定位；距離由這份路徑算出。' + prov + '格線間隔 4 度。';
+}
+
+fetch('data/typhoons.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => {
+  if (!d.storms || !d.storms.length) { $('ty-status').textContent = d.period.from + ' 到 ' + d.period.to + ' 之間，氣象署颱風資料庫沒有列出發布警報的颱風。'; return; }
+  TY = d; tySel = d.storms[d.storms.length - 1].id; tyStn = d.stations[0].id;
+  const st = $('ty-status');
+  st.textContent = d.period.from + ' 到 ' + d.period.to + ' 之間，氣象署發布過警報的颱風有 ' + d.storms.length + ' 個。下表的陣風、氣壓、雨量是警報期間各測站的實測值，不是颱風本身的強度。';
+  if ((d.problems || []).length) { const w = document.createElement('span'); w.className = 'warn'; w.textContent = '有 ' + d.problems.length + ' 筆資料這次沒有取到，部分數值可能缺漏。'; st.append(w); }
+  renderTyphoonTable(); renderTyphoon();
+}).catch(() => { $('ty-status').textContent = '讀不到颱風資料檔。'; });
 </script>
 </body>
 </html>
