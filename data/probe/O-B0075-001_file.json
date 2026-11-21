@@ -1,0 +1,6 @@
+{
+ "http": 404,
+ "bytes": 32,
+ "seconds": 0.4,
+ "error": "{\"message\": \"Resouce not found.\"}"
+}

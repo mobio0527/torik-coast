@@ -1,38 +1,29 @@
 {
- "updated": "2026-11-21 12:11",
+ "updated": "2026-11-21 12:14",
  "timezone": "Asia/Taipei",
  "stage": "probe",
  "datasets": [
   {
-   "id": "F-A0021-001",
-   "label": "潮汐預報－未來 1 個月",
-   "confirmed": true,
-   "ok": true,
-   "http": 200,
-   "bytes": 4828921,
-   "error": null
-  },
-  {
-   "id": "F-D0047-037",
-   "label": "鄉鎮天氣預報－臺東縣未來 3 天",
-   "confirmed": true,
-   "ok": true,
-   "http": 200,
-   "bytes": 766681,
-   "error": null
-  },
-  {
-   "id": "O-B0075-001",
-   "label": "海象監測－48 小時浮標站與潮位站（候選編號）",
+   "id": "O-B0076-001@file",
+   "label": "海象觀測測站資料（檔案介面，候選）",
    "confirmed": false,
    "ok": true,
    "http": 200,
-   "bytes": 1767845,
+   "bytes": 199756,
    "error": null
   },
   {
-   "id": "O-B0076-001",
-   "label": "海象觀測測站資料（候選編號）",
+   "id": "O-B0075-002",
+   "label": "海象監測－30 天（候選）",
+   "confirmed": false,
+   "ok": true,
+   "http": 200,
+   "bytes": 25914902,
+   "error": null
+  },
+  {
+   "id": "C-B0052-001",
+   "label": "測站資料（候選）",
    "confirmed": false,
    "ok": false,
    "http": 404,
@@ -40,22 +31,22 @@
    "error": "{\"message\": \"Resource not found.\"}"
   },
   {
-   "id": "O-A0001-001",
-   "label": "自動氣象站觀測（候選編號）",
+   "id": "C-B0052-001@file",
+   "label": "測站資料（檔案介面，候選）",
    "confirmed": false,
    "ok": true,
    "http": 200,
-   "bytes": 884668,
+   "bytes": 5115570,
    "error": null
   },
   {
-   "id": "O-A0003-001",
-   "label": "現在天氣觀測報告（候選編號）",
+   "id": "O-B0075-001@file",
+   "label": "海象監測 48 小時（檔案介面，候選）",
    "confirmed": false,
-   "ok": true,
-   "http": 200,
-   "bytes": 440777,
-   "error": null
+   "ok": false,
+   "http": 404,
+   "bytes": 32,
+   "error": "{\"message\": \"Resouce not found.\"}"
   }
  ]
 }

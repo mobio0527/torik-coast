@@ -1,0 +1,515 @@
+{
+ "http": 200,
+ "bytes": 199756,
+ "seconds": 1.4,
+ "shape": {
+  "cwaopendata": {
+   "@xmlns": "str:urn:cwa:gov:tw:cwacommon:0.1",
+   "Identifier": "str:f53ed27e-76ff-4fae-bc1c-e9d37b20c20c",
+   "DatasetID": "str:O-MMC-0001",
+   "DatasetName": "str:即時海況觀測",
+   "DataItemID": "str:O-MMC-0001-00004",
+   "Sender": "str:od@cwa.gov.tw",
+   "Sent": "str:2026-11-21T12:06:02+08:00",
+   "Status": "str:Actual",
+   "Scope": "str:Public",
+   "MsgType": "str:Issue",
+   "Resources": {
+    "Resource": {
+     "Metadata": {
+      "ResourceID": "str:O-MMC-0001-00004",
+      "ResourceName": "str:中央氣象署海象觀測_浮標站與潮位站測站資料",
+      "ResourceDescription": "str:中央氣象署所屬本島各站之潮位資料皆根據內政部國土測繪中心所公告之一等水準點以及潮",
+      "Language": "str:zh",
+      "Sources": {
+       "Source": {
+        "__list_len__": 2,
+        "__first__": {
+         "Title": "str:即時海況所屬觀測站說明",
+         "Path": "str:https://opendata.cwa.gov.tw/dataset/fore",
+         "Description": "str:請到中央氣象署氣象資料開放平臺提供的連結取得所需說明資料"
+        }
+       }
+      },
+      "Temporal": {
+       "Description": "str:即時海況觀測狀態 / 更新頻率為每天",
+       "Update": "str:2026-11-21T12:06:02+08:00"
+      },
+      "Spatial": {
+       "CoordinateReferenceSystem": {
+        "EPSGCode": "str:EPSG:4326",
+        "CoordinateName": "str:WGS84",
+        "CoordinateDatum": "str:World Geodetic System 1984(EPSG:6326)",
+        "CoordinateFormat": "str:decimal degrees"
+       }
+      }
+     },
+     "Data": {
+      "SeaSurfaceObs": {
+       "Location": {
+        "__list_len__": 84,
+        "__first__": {
+         "Station": {
+          "StationID": "str:46761F",
+          "StationName": "str:成功浮球式波浪站",
+          "StationNameEN": "str:Chenggong Wave Station",
+          "StationLongitude": "str:121.4201",
+          "StationLatitude": "str:23.1325",
+          "StationAttribute": "str:浮球站",
+          "StationAttributeEN": "str:Buoy Station",
+          "StationAddress": "str:三仙臺海岬北面約700公尺，水深約28公尺",
+          "StationAddressEN": "str:About 700 meters north of Sanxiantai Cap",
+          "County": {
+           "CountyName": "str:臺東縣",
+           "CountyNameEN": "str:Taitung County"
+          },
+          "Town": {
+           "TownName": "str:成功鎮",
+           "TownNameEN": "str:Chenggong Township"
+          },
+          "Area": {
+           "AreaName": "str:成功大武沿海",
+           "AreaNameEN": "str:Chenggong Dawu inshore"
+          },
+          "StationChargeIns": "str:交通部中央氣象署",
+          "StationChargeInsEN": "str:Central Weather Administration  Ministry"
+         },
+         "Description": "NoneType:None",
+         "Sequence": "str:0",
+         "StationObsStatus": {
+          "StationStatus": "str:1",
+          "ObservedPropertyNames": "str:WaveHeight,WaveDirection,WaveDirectionDe",
+          "ObservedProperties": {
+           "WaveHeight": {
+            "ObsStatus": "str:1"
+           },
+           "WaveDirection": {
+            "ObsStatus": "str:1"
+           },
+           "WaveDirectionDescription": {
+            "ObsStatus": "str:1"
+           },
+           "WavePeriod": {
+            "ObsStatus": "str:1"
+           },
+           "SeaTemperature": {
+            "ObsStatus": "str:1"
+           }
+          },
+          "StationObsTimes": "NoneType:None"
+         }
+        }
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "names": {
+  "StationID": [
+   "11781",
+   "12540",
+   "1456",
+   "1496",
+   "1566",
+   "1586",
+   "1596",
+   "1676",
+   "1786",
+   "1956",
+   "1966",
+   "46694A",
+   "46699A",
+   "46706A",
+   "46708A",
+   "46714D",
+   "46735A",
+   "46757B",
+   "46759A",
+   "46761F",
+   "46778A",
+   "46787A",
+   "4A",
+   "4F",
+   "4I",
+   "4J21",
+   "4Q11",
+   "4S21",
+   "4T21",
+   "4W21",
+   "A6S01",
+   "C4A01",
+   "C4A02",
+   "C4A03",
+   "C4A05",
+   "C4A06",
+   "C4B01",
+   "C4B03",
+   "C4C01",
+   "C4D01",
+   "C4E01",
+   "C4F01",
+   "C4G01",
+   "C4J01",
+   "C4L01",
+   "C4L02",
+   "C4N01",
+   "C4P01",
+   "C4P02",
+   "C4P03",
+   "C4P09",
+   "C4Q01",
+   "C4Q02",
+   "C4Q03",
+   "C4S01",
+   "C4S02",
+   "C4T01",
+   "C4U01",
+   "C4U02",
+   "C4W01",
+   "C4W02",
+   "C4W03",
+   "C4W04",
+   "C4W05",
+   "C6AH2",
+   "C6B01",
+   "C6D01",
+   "C6F01",
+   "C6G01",
+   "C6N01",
+   "C6S94",
+   "C6V27",
+   "C6W08",
+   "C6W10",
+   "COMC08",
+   "NTU01",
+   "NTU02",
+   "OAC003",
+   "OAC004",
+   "OAC005",
+   "OAC006",
+   "OAC007",
+   "WRA005",
+   "WRA007"
+  ],
+  "StationName": [
+   "NTU01浮標",
+   "NTU02浮標",
+   "七美潮位站",
+   "七美資料浮標",
+   "七股資料浮標",
+   "南沙潮位站",
+   "南灣浮標",
+   "吉貝潮位站",
+   "和平港潮位站",
+   "四草潮位站",
+   "基隆潮位站",
+   "塭港潮位站",
+   "外傘頂資料浮標",
+   "外埔潮位站",
+   "大武潮位站",
+   "大鵬灣",
+   "安平潮位站",
+   "富岡潮位站",
+   "富貴角資料浮標",
+   "將軍潮位站",
+   "小港潮位站",
+   "小琉球潮位站",
+   "小琉球資料浮標",
+   "彌陀資料浮標",
+   "彭佳嶼資料浮標",
+   "彰化水位浮標",
+   "後壁湖潮位站",
+   "成功浮球式波浪站",
+   "成功潮位站",
+   "料羅灣",
+   "料羅灣潮位站",
+   "新竹水位浮標",
+   "新竹潮位站",
+   "新竹資料浮標",
+   "東吉嶼浮標",
+   "東吉潮位站",
+   "東沙島資料浮標",
+   "東沙潮位站",
+   "東港潮位站",
+   "東石潮位站",
+   "枋寮潮位站",
+   "水頭潮位站",
+   "永安潮位站",
+   "淡水潮位站",
+   "淡海潮位站",
+   "潮境浮標",
+   "澎湖潮位站",
+   "澎湖資料浮標",
+   "烏石潮位站",
+   "石梯",
+   "石梯潮位站",
+   "福隆潮位站",
+   "竹圍潮位站",
+   "綠島",
+   "綠島公館資料浮標",
+   "綠島潮位站",
+   "臺中港潮位站",
+   "臺中資料浮標",
+   "臺南水位浮標",
+   "臺東資料浮標",
+   "花蓮潮位站",
+   "花蓮資料浮標",
+   "萡子寮潮位站",
+   "蘇澳潮位站",
+   "蘇澳資料浮標",
+   "蘭嶼潮位站",
+   "蘭嶼資料浮標",
+   "蜜月灣浮標",
+   "蟳廣嘴潮位站",
+   "金門資料浮標",
+   "長潭里潮位站",
+   "馬祖潮位站",
+   "馬祖資料浮標",
+   "高雄潮位站",
+   "鵝鑾鼻資料浮標",
+   "鹿港潮位站",
+   "麟山鼻潮位站",
+   "麥寮",
+   "麥寮潮位站",
+   "鼻頭角浮標",
+   "龍洞潮位站",
+   "龍洞資料浮標",
+   "龜山島資料浮標"
+  ],
+  "CountyName": [
+   "嘉義縣",
+   "基隆市",
+   "宜蘭縣",
+   "屏東縣",
+   "彰化縣",
+   "新北市",
+   "新竹市",
+   "桃園市",
+   "澎湖縣",
+   "臺中市",
+   "臺南市",
+   "臺東縣",
+   "花蓮縣",
+   "苗栗縣",
+   "連江縣",
+   "金門縣",
+   "雲林縣",
+   "高雄市"
+  ],
+  "TownName": [
+   "七美鄉",
+   "七股區",
+   "中山區",
+   "中正區",
+   "北區",
+   "南竿鄉",
+   "四湖鄉",
+   "大園區",
+   "大武鄉",
+   "安南區",
+   "安平區",
+   "將軍區",
+   "彌陀區",
+   "後龍鎮",
+   "恆春鎮",
+   "成功鎮",
+   "新城鄉",
+   "旗津區",
+   "望安鄉",
+   "東引鄉",
+   "東港鎮",
+   "東石鄉",
+   "枋寮鄉",
+   "梧棲區",
+   "永安區",
+   "淡水區",
+   "清水區",
+   "琉球鄉",
+   "瑞芳區",
+   "白沙鄉",
+   "石門區",
+   "秀林鄉",
+   "綠島鄉",
+   "臺東市",
+   "花蓮市",
+   "蘇澳鎮",
+   "蘭嶼鄉",
+   "豐濱鄉",
+   "貢寮區",
+   "金城鎮",
+   "金湖鎮",
+   "頭城鎮",
+   "香山區",
+   "馬公市",
+   "鹽埕區",
+   "鹿港鎮",
+   "麥寮鄉",
+   "鼓山區"
+  ]
+ },
+ "near_samples": [
+  {
+   "StationID": "46761F",
+   "StationName": "成功浮球式波浪站",
+   "StationNameEN": "Chenggong Wave Station",
+   "StationLongitude": "121.4201",
+   "StationLatitude": "23.1325",
+   "StationAttribute": "浮球站",
+   "StationAttributeEN": "Buoy Station",
+   "StationAddress": "三仙臺海岬北面約700公尺，水深約28公尺",
+   "StationAddressEN": "About 700 meters north of Sanxiantai Cape, the water depth is about 28 meters",
+   "County": {
+    "CountyName": "臺東縣",
+    "CountyNameEN": "Taitung County"
+   },
+   "Town": {
+    "TownName": "成功鎮",
+    "TownNameEN": "Chenggong Township"
+   },
+   "Area": {
+    "AreaName": "成功大武沿海",
+    "AreaNameEN": "Chenggong Dawu inshore"
+   },
+   "StationChargeIns": "交通部中央氣象署",
+   "StationChargeInsEN": "Central Weather Administration  Ministry of Transportation and Communications"
+  },
+  {
+   "CountyName": "臺東縣",
+   "CountyNameEN": "Taitung County"
+  },
+  {
+   "TownName": "成功鎮",
+   "TownNameEN": "Chenggong Township"
+  },
+  {
+   "StationID": "C4S02",
+   "StationName": "成功潮位站",
+   "StationNameEN": "Chenggong",
+   "StationLongitude": "121.3799",
+   "StationLatitude": "23.0972",
+   "StationAttribute": "潮位站",
+   "StationAttributeEN": "Tidal Station",
+   "StationAddress": "臺東縣成功漁港",
+   "StationAddressEN": "Chenggong Fishing Port in Taitung County",
+   "County": {
+    "CountyName": "臺東縣",
+    "CountyNameEN": "Taitung County"
+   },
+   "Town": {
+    "TownName": "成功鎮",
+    "TownNameEN": "Chenggong Township"
+   },
+   "Area": {
+    "AreaName": "成功大武沿海",
+    "AreaNameEN": "Chenggong Dawu inshore"
+   },
+   "StationChargeIns": "交通部中央氣象署",
+   "StationChargeInsEN": "Central Weather Administration  Ministry of Transportation and Communications"
+  },
+  {
+   "CountyName": "臺東縣",
+   "CountyNameEN": "Taitung County"
+  },
+  {
+   "TownName": "成功鎮",
+   "TownNameEN": "Chenggong Township"
+  },
+  {
+   "StationID": "C4S01",
+   "StationName": "蘭嶼潮位站",
+   "StationNameEN": "Lanyu",
+   "StationLongitude": "121.5079",
+   "StationLatitude": "22.0577",
+   "StationAttribute": "潮位站",
+   "StationAttributeEN": "Tidal Station",
+   "StationAddress": "蘭嶼開元漁港",
+   "StationAddressEN": "Kaiyuan Fishing Port in Lanyu",
+   "County": {
+    "CountyName": "臺東縣",
+    "CountyNameEN": "Taitung County"
+   },
+   "Town": {
+    "TownName": "蘭嶼鄉",
+    "TownNameEN": "Lanyu Township"
+   },
+   "Area": {
+    "AreaName": "綠島蘭嶼海面",
+    "AreaNameEN": "Ludao-Lanyu inshore"
+   },
+   "StationChargeIns": "交通部中央氣象署",
+   "StationChargeInsEN": "Central Weather Administration  Ministry of Transportation and Communications"
+  },
+  {
+   "CountyName": "臺東縣",
+   "CountyNameEN": "Taitung County"
+  },
+  {
+   "TownName": "蘭嶼鄉",
+   "TownNameEN": "Lanyu Township"
+  },
+  {
+   "StationID": "1586",
+   "StationName": "富岡潮位站",
+   "StationNameEN": "Fugang",
+   "StationLongitude": "121.1921",
+   "StationLatitude": "22.7907",
+   "StationAttribute": "潮位站",
+   "StationAttributeEN": "Tidal Station",
+   "StationAddress": "臺東縣富岡二號海堤旁之富岡漁港南岸碼頭",
+   "StationAddressEN": "Fugang Fishing Port South Shore Pier beside Fugang No. 2 Seawall, Taitung County",
+   "County": {
+    "CountyName": "臺東縣",
+    "CountyNameEN": "Taitung County"
+   },
+   "Town": {
+    "TownName": "臺東市",
+    "TownNameEN": "Taitung City"
+   },
+   "Area": {
+    "AreaName": "成功大武沿海",
+    "AreaNameEN": "Chenggong Dawu inshore"
+   },
+   "StationChargeIns": "經濟部水利署",
+   "StationChargeInsEN": "Water Resources Agency of Ministry of Economic Affairs"
+  },
+  {
+   "CountyName": "臺東縣",
+   "CountyNameEN": "Taitung County"
+  },
+  {
+   "TownName": "臺東市",
+   "TownNameEN": "Taitung City"
+  },
+  {
+   "StationID": "1676",
+   "StationName": "綠島潮位站",
+   "StationNameEN": "Lyudao",
+   "StationLongitude": "121.4731",
+   "StationLatitude": "22.6606",
+   "StationAttribute": "潮位站",
+   "StationAttributeEN": "Tidal Station",
+   "StationAddress": "綠島南寮二號海堤南側，南寮漁港北岸碼頭",
+   "StationAddressEN": "South side of Green Island Nanliao No. 2 Seawall, North Shore Pier of Nanliao Fishing Port",
+   "County": {
+    "CountyName": "臺東縣",
+    "CountyNameEN": "Taitung County"
+   },
+   "Town": {
+    "TownName": "綠島鄉",
+    "TownNameEN": "Lvdao Township"
+   },
+   "Area": {
+    "AreaName": "綠島蘭嶼海面",
+    "AreaNameEN": "Ludao-Lanyu inshore"
+   },
+   "StationChargeIns": "經濟部水利署",
+   "StationChargeInsEN": "Water Resources Agency of Ministry of Economic Affairs"
+  },
+  {
+   "CountyName": "臺東縣",
+   "CountyNameEN": "Taitung County"
+  }
+ ]
+}
