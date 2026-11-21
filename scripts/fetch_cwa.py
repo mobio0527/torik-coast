@@ -120,7 +120,9 @@ def marine_obs(key, stations):
         # drop fields that are empty for the whole period, to keep the file small
         keep = {k for r in rows for k, v in r.items() if v is not None}
         wanted[sid]["obs"] = [{k: r.get(k) for k in r if k in keep} for r in rows]
-    return [s for s in stations if s.get("obs")]
+    def has_numbers(st):
+        return any(isinstance(v, (int, float)) for r in st.get("obs", []) for k, v in r.items() if k != "t")
+    return [s for s in stations if has_numbers(s)][:6]
 
 
 # ---------- weather ----------
@@ -199,9 +201,12 @@ def town_forecast(key):
                 best = (d, loc, lat, lon)
     d, loc, lat, lon = best
     elements = []
+    wanted = ("溫度", "體感溫度", "相對濕度", "風速", "風向", "3小時降雨機率", "天氣現象")
     for el in loc.get("WeatherElement", []):
+        if el.get("ElementName") not in wanted:
+            continue
         series = []
-        for t in el.get("Time", [])[:30]:
+        for t in el.get("Time", [])[:24]:
             row = {"t": t.get("DataTime") or t.get("StartTime"), "end": t.get("EndTime")}
             for v in t.get("ElementValue", []):
                 row.update(v)
@@ -242,7 +247,15 @@ def main():
             latest["marine"] = step("O-B0075-001", "海象觀測（48 小時）", lambda: marine_obs(key, stations))
         staffed = step("O-A0003-001", "氣象觀測（署屬測站）", lambda: weather(key, "O-A0003-001", "署屬氣象站")) or []
         auto = step("O-A0001-001", "氣象觀測（自動站）", lambda: weather(key, "O-A0001-001", "自動氣象站")) or []
-        latest["weather"] = sorted(staffed + auto, key=lambda x: x["km"])
+        merged = {}
+        for st in staffed + auto:
+            if st["id"] not in merged:
+                merged[st["id"]] = st
+            else:
+                for k, v in st.items():
+                    if merged[st["id"]].get(k) is None and k != "kind":
+                        merged[st["id"]][k] = v
+        latest["weather"] = sorted(merged.values(), key=lambda x: x["km"])[:8]
         latest["tide_forecast"] = step("F-A0021-001", "潮汐預報", lambda: tide_forecast(key))
         latest["town_forecast"] = step("F-D0047-037", "鄉鎮天氣預報", lambda: town_forecast(key))
         if any(d["ok"] for d in status["datasets"]):

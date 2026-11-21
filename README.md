@@ -6,10 +6,10 @@
 
 ## 內容
 
-- `index.html`：互動式海陸立體地形（Plotly）。
-- `scripts/fetch_cwa.py`：向中央氣象署開放資料平臺取資料。目前是探測階段，只記錄各資料集的回應格式與都歷附近的測站樣本。
+- `index.html`：互動式海陸立體地形（Plotly），以及即時潮位、海象、氣象與預報。
+- `scripts/fetch_cwa.py`：向中央氣象署開放資料平臺取資料，依與都歷的距離挑選測站與預報點。
 - `.github/workflows/fetch-cwa.yml`：排程，每小時執行兩次，結果寫入 `data/`。
-- `data/status.json`：最近一次執行的狀態。`data/probe/`：各資料集的格式摘要。
+- `data/latest.json`：頁面讀取的最新資料。`data/status.json`：最近一次執行的狀態。
 
 ## 設定
 
@@ -18,4 +18,4 @@
 ## 資料來源
 
 - 地形：GEBCO Compilation Group (2026) GEBCO 2026 Grid (doi:10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa)。不可用於航行或海上安全用途。
-- 氣象、潮汐、海象：交通部中央氣象署開放資料平臺。
+- 氣象、潮汐、海象：交通部中央氣象署開放資料平臺（O-B0076-001、O-B0075-001、O-A0003-001、O-A0001-001、F-A0021-001、F-D0047-037）。

@@ -18,6 +18,8 @@
   --rule: #cfd8da;
   --accent: #b4532a;
   --sea-deep: #0b2a4a;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
   --font-display: "Noto Serif TC", "Songti TC", "PMingLiU", serif;
   --font-body: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", system-ui, sans-serif;
 }
@@ -25,12 +27,14 @@
   :root:not([data-theme="light"]) {
     --paper: #0f181e; --panel: #16232b; --ink: #e6eef0; --ink-2: #9fb1b9;
     --rule: #2b3b44; --accent: #e08a5c; --sea-deep: #0b2a4a;
+    --series-1: #3987e5; --series-2: #d95926;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --paper: #0f181e; --panel: #16232b; --ink: #e6eef0; --ink-2: #9fb1b9;
   --rule: #2b3b44; --accent: #e08a5c; --sea-deep: #0b2a4a;
+    --series-1: #3987e5; --series-2: #d95926;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -81,12 +85,24 @@ dl { margin: 0; }
 
 .notes ul { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 65ch; }
 .notes li::marker { color: var(--accent); }
-.live { border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); padding: 14px; }
-.live p { margin: 0 0 6px; font-size: 15px; }
-.live ul { margin: 6px 0 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 14px; }
-.live li { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
-.live .tag { font-size: 12px; padding: 1px 7px; border-radius: 3px; border: 1px solid var(--ink-2); color: var(--ink-2); white-space: nowrap; }
-.live .tag.ok { border-color: var(--ink); color: var(--ink); font-weight: 700; }
+.live { border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); padding: 16px 14px; display: grid; gap: 14px; min-width: 0; }
+.live h2 { margin: 0; }
+.live h3 { font-family: var(--font-display); font-weight: 600; font-size: 16px; margin: 6px 0 0; }
+.live .hint { margin: 0; }
+.live .warn { color: var(--accent); font-weight: 700; }
+.live .facts { border-radius: 4px; }
+#tide-plot { width: 100%; height: 300px; }
+.rows { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; font-variant-numeric: tabular-nums; }
+.rows li { display: flex; gap: 12px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--rule); font-size: 15px; }
+.rows li:last-child { border-bottom: 0; }
+.rows .when { min-width: 7.2em; color: var(--ink-2); }
+.rows .what { font-weight: 700; min-width: 3em; }
+.rows .tag { margin-left: auto; font-size: 12px; color: var(--ink-2); }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+th { font-weight: 500; color: var(--ink-2); font-size: 13px; }
+td small { color: var(--ink-2); }
 .source { font-size: 13px; color: var(--ink-2); border-top: 1px solid var(--rule); padding-top: 12px; max-width: 70ch; overflow-wrap: anywhere; }
 .source p { margin: 0 0 4px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -123,6 +139,7 @@ dl { margin: 0; }
           <label><input type="checkbox" id="chk-sea" checked> 海平面</label>
           <label><input type="checkbox" id="chk-contour"> 每 500 公尺等高線</label>
           <label><input type="checkbox" id="chk-src"> 海底資料來源</label>
+          <label><input type="checkbox" id="chk-stn" checked> 海象測站</label>
         </div>
       </div>
       <div class="srckey" id="srckey" aria-label="海底資料來源圖例">
@@ -146,10 +163,20 @@ dl { margin: 0; }
     </dl>
   </section>
 
-  <section class="live" aria-label="即時資料狀態">
+  <section class="live" aria-label="即時資料">
     <h2>即時資料</h2>
-    <p id="live-status">正在讀取資料狀態…</p>
-    <ul id="live-list"></ul>
+    <p class="hint" id="live-status">正在讀取即時資料…</p>
+    <dl class="facts" id="live-tiles"></dl>
+    <h3>潮位：實測與預報</h3>
+    <div id="tide-plot"></div>
+    <p class="hint" id="tide-note"></p>
+    <h3>接下來的滿潮與乾潮</h3>
+    <ul class="rows" id="tide-next"></ul>
+    <h3>附近氣象站現況</h3>
+    <div class="scroll"><table id="wx-table"></table></div>
+    <h3 id="fc-title">未來 24 小時預報</h3>
+    <div class="scroll"><table id="fc-table"></table></div>
+    <p class="hint">資料來源：交通部中央氣象署開放資料平臺。排程每小時向氣象署取兩次資料，各測站本身的觀測時間以表中所列為準。</p>
   </section>
 
   <section class="notes">
@@ -159,7 +186,9 @@ dl { margin: 0; }
       <li>一格約 430 × 460 公尺。海灘、礁岩、港口這類近岸細節小於一格，這張圖看不出來。</li>
       <li>垂直方向預設放大 2 倍，坡度看起來比實際陡。拉到 1 倍是真實比例。</li>
       <li>標示的「都歷」是 23.0236°N, 121.3340°E，聚落東南側的海岸。</li>
-      <li>GEBCO 網格不可用於航行或任何與海上安全有關的用途。</li>
+      <li>即時數值屬於各測站所在位置，不是都歷海灘本身。每個數值都標了測站名稱與距離。</li>
+      <li>潮汐預報只算天文潮，沒有考慮天氣。颱風或強風時，實測潮位會和預報有明顯差距。</li>
+      <li>GEBCO 網格與本頁的即時資料都不可用於航行或任何與海上安全有關的用途。</li>
     </ul>
   </section>
 
@@ -265,11 +294,27 @@ function traces() {
       line: { color: css('--accent'), width: 5 },
       marker: { size: [4, 6], color: css('--accent') },
       hoverinfo: 'skip'
-    }
+    },
+    (() => {
+      // one pin per station, at staggered heights so neighbouring labels do not collide
+      const xs = [], ys = [], zs = [], ts = [], ms = [];
+      STATIONS.forEach((d, i) => {
+        const h = 500 + (i % 3) * 500;
+        xs.push(d.lon, d.lon, null); ys.push(d.lat, d.lat, null); zs.push(0, h, null);
+        ts.push('', d.name.replace('浮球式', ''), ''); ms.push(3, 5, 0);
+      });
+      return {
+        type: 'scatter3d', name: '海象測站', mode: 'lines+markers+text',
+        x: xs, y: ys, z: zs, text: ts, textposition: 'top center',
+        textfont: { size: 12, color: ink, family: css('--font-body') },
+        line: { color: ink, width: 3 }, marker: { size: ms, color: ink },
+        hoverinfo: 'skip', connectgaps: false
+      };
+    })()
   ];
 }
 
-let exag = 2, ready = false;
+let exag = 2, ready = false, STATIONS = [];
 
 function draw() {
   if (!window.Plotly) {
@@ -295,7 +340,8 @@ function applyLayers() {
     showscale: [!src],
     'contours.z': [contourSpec(c500)]
   }, [0]);
-  Plotly.restyle(el, { visible: [sea && !src] }, [1]);   // the tinted plane would shift the source-key colours
+  Plotly.restyle(el, { visible: [sea && !src] }, [1]);
+  Plotly.restyle(el, { visible: [document.getElementById('chk-stn').checked] }, [3]);
 }
 
 document.getElementById('exag').addEventListener('input', e => {
@@ -308,36 +354,166 @@ document.getElementById('views').addEventListener('click', e => {
   document.querySelectorAll('#views button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
   Plotly.relayout(el, { 'scene.camera': VIEWS[b.dataset.view] });
 });
-['chk-sea', 'chk-contour', 'chk-src'].forEach(id => document.getElementById(id).addEventListener('change', applyLayers));
+['chk-sea', 'chk-contour', 'chk-src', 'chk-stn'].forEach(id => document.getElementById(id).addEventListener('change', applyLayers));
 
 // Redraw when the viewer's theme changes so axis and label colours follow the tokens.
-const retheme = () => { if (ready) { ready = false; draw(); } };
+let LIVE = null;
+const retheme = () => { if (ready) { ready = false; draw(); } if (LIVE) renderTide(LIVE); };
 new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
 
 draw();
 
-// Live-data status. Stage A: the scheduled job only probes the weather agency's datasets.
-(function () {
-  const p = document.getElementById('live-status'), ul = document.getElementById('live-list');
-  fetch('data/status.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(s => {
-    if (!s.datasets || !s.datasets.length) {
-      p.textContent = '尚未啟用：排程還沒有拿到氣象署的授權碼，或還沒執行過。（狀態時間 ' + s.updated + '）';
-      return;
+// ---------- Live data from data/latest.json (written by the scheduled job) ----------
+const $ = id => document.getElementById(id);
+const when = iso => iso ? iso.slice(5, 7) + '/' + iso.slice(8, 10) + ' ' + iso.slice(11, 16) : '';
+const naive = iso => iso.slice(0, 10) + ' ' + iso.slice(11, 16);          // keep Taipei clock time on the axis
+const COMPASS = ['北', '北北東', '東北', '東北東', '東', '東南東', '東南', '南南東', '南', '南南西', '西南', '西南西', '西', '西北西', '西北', '北北西'];
+const compass = deg => COMPASS[Math.round(((deg % 360) + 360) % 360 / 22.5) % 16];
+const isNum = v => typeof v === 'number' && isFinite(v);
+const fix = (v, n) => v.toFixed(n).replace('-', '−');
+
+function lastWith(station, key) {
+  for (let i = station.obs.length - 1; i >= 0; i--) if (isNum(station.obs[i][key])) return station.obs[i];
+  return null;
+}
+// Among stations that report `key`, take the freshest reading; ties go to the nearest station.
+function pick(marine, key) {
+  let best = null;
+  (marine || []).forEach(st => {
+    const row = lastWith(st, key);
+    if (row && (!best || row.t > best.row.t)) best = { st, row };
+  });
+  return best;
+}
+function tile(label, value, small) {
+  const div = document.createElement('div'); div.className = 'fact';
+  const dt = document.createElement('dt'); dt.textContent = label;
+  const dd = document.createElement('dd'); dd.textContent = value;
+  const sm = document.createElement('small'); sm.textContent = small; dd.append(sm);
+  div.append(dt, dd); return div;
+}
+const src = (st, t) => st.name + '（' + st.km + ' 公里）· ' + when(t);
+
+function renderTiles(d) {
+  const box = $('live-tiles');
+  const tide = pick(d.marine, 'TideHeight');
+  if (tide) box.append(tile('潮位', fix(tide.row.TideHeight, 2) + ' 公尺', (tide.row.TideLevel || '') + ' · ' + src(tide.st, tide.row.t)));
+  const sst = pick(d.marine, 'SeaTemperature');
+  if (sst) box.append(tile('海溫', fix(sst.row.SeaTemperature, 1) + ' °C', src(sst.st, sst.row.t)));
+  const wave = pick(d.marine, 'WaveHeight');
+  if (wave) {
+    const r = wave.row, bits = [];
+    if (isNum(r.WavePeriod)) bits.push('週期 ' + fix(r.WavePeriod, 0) + ' 秒');
+    if (isNum(r.WaveDirection)) bits.push('來向 ' + compass(r.WaveDirection));
+    box.append(tile('浪高', fix(r.WaveHeight, 1) + ' 公尺', bits.concat(src(wave.st, r.t)).join(' · ')));
+  }
+  const wx = (d.weather || [])[0];
+  if (wx) {
+    if (isNum(wx.temp)) box.append(tile('氣溫', fix(wx.temp, 1) + ' °C', (isNum(wx.rh) ? '濕度 ' + fix(wx.rh, 0) + '% · ' : '') + src(wx, wx.t)));
+    if (isNum(wx.wind_speed)) {
+      const calm = wx.wind_speed < 0.3;
+      box.append(tile('風', calm ? '靜風' : fix(wx.wind_speed, 1) + ' 公尺/秒', (calm || !isNum(wx.wind_dir) ? '' : compass(wx.wind_dir) + '風 · ') + src(wx, wx.t)));
     }
-    const ok = s.datasets.filter(d => d.ok).length;
-    p.textContent = '資料管線測試中：最近一次向氣象署取資料是 ' + s.updated + '（臺北時間），' + s.datasets.length + ' 個資料集有 ' + ok + ' 個成功。測站數值與潮位曲線尚未接上。';
-    s.datasets.forEach(d => {
-      const li = document.createElement('li');
-      const tag = document.createElement('span');
-      tag.className = 'tag' + (d.ok ? ' ok' : '');
-      tag.textContent = d.ok ? '成功' : '失敗';
-      const txt = document.createElement('span');
-      txt.textContent = d.label + '　' + d.id + (d.ok ? '' : '（HTTP ' + (d.http || '無回應') + '）');
-      li.append(tag, txt); ul.append(li);
+    box.append(tile('天氣', wx.weather || '—', (isNum(wx.rain_today) ? '今日雨量 ' + fix(wx.rain_today, 1) + ' 毫米 · ' : '') + src(wx, wx.t)));
+  }
+}
+
+function renderTide(d) {
+  $('tide-next').textContent = '';
+  const tide = pick(d.marine, 'TideHeight'), fc = d.tide_forecast;
+  if (!tide && !fc) { $('tide-plot').textContent = '目前沒有潮位資料。'; return; }
+  const now = new Date(d.updated).getTime(), H = 3600e3;
+  const ink = css('--ink'), ink2 = css('--ink-2'), rule = css('--rule');
+  const traces = [];
+  if (tide) {
+    const rows = tide.st.obs.filter(r => isNum(r.TideHeight));
+    traces.push({
+      type: 'scatter', mode: 'lines', name: '實測（' + tide.st.name + '）',
+      x: rows.map(r => naive(r.t)), y: rows.map(r => r.TideHeight),
+      line: { color: css('--series-1'), width: 2 },
+      hovertemplate: '%{x|%m/%d %H:%M}<br><b>%{y:.2f} 公尺</b>　實測<extra></extra>'
     });
-  }).catch(() => { p.textContent = '讀不到資料狀態檔。排程可能還沒執行過。'; });
-})();
+  }
+  let ev = [];
+  if (fc) {
+    ev = fc.events.filter(e => isNum(e.twvd_cm) && Math.abs(new Date(e.t).getTime() - now) <= 50 * H);
+    traces.push({
+      type: 'scatter', mode: 'lines+markers', name: '預報滿乾潮（' + fc.name + '）',
+      x: ev.map(e => naive(e.t)), y: ev.map(e => e.twvd_cm / 100), text: ev.map(e => e.type),
+      line: { color: css('--series-2'), width: 1.5, dash: 'dot', shape: 'spline' },
+      marker: { size: 9, color: css('--series-2'), line: { color: css('--panel'), width: 2 } },
+      hovertemplate: '%{x|%m/%d %H:%M}<br><b>%{y:.2f} 公尺</b>　預報%{text}<extra></extra>'
+    });
+  }
+  const nowX = naive(d.updated);
+  Plotly.newPlot('tide-plot', traces, {
+    margin: { l: 44, r: 8, t: 48, b: 34 }, paper_bgcolor: 'rgba(0,0,0,0)', plot_bgcolor: 'rgba(0,0,0,0)',
+    font: { family: css('--font-body'), color: ink, size: 12 },
+    legend: { orientation: 'h', x: 0, y: 1.02, yanchor: 'bottom', font: { size: 12, color: ink } },
+    xaxis: { type: 'date', tickformat: '%m/%d<br>%H:%M', gridcolor: rule, linecolor: rule, tickfont: { color: ink2 }, fixedrange: true },
+    yaxis: { title: { text: '潮高（公尺）', font: { size: 12, color: ink2 } }, gridcolor: rule, zerolinecolor: ink2, tickfont: { color: ink2 }, fixedrange: true },
+    shapes: [{ type: 'line', x0: nowX, x1: nowX, yref: 'paper', y0: 0, y1: 1, line: { color: ink2, width: 1 } }],
+    annotations: [{ x: nowX, yref: 'paper', y: 0, yanchor: 'bottom', xanchor: 'left', xshift: 4, text: '更新時間', showarrow: false, font: { size: 11, color: ink2 } }],
+    hoverlabel: { bgcolor: css('--panel'), bordercolor: rule, font: { color: ink, size: 13 } }
+  }, { responsive: true, displayModeBar: false });
+
+  const parts = ['潮高相對臺灣高程基準（TWVD2001）。'];
+  if (tide && fc) parts.push('實測來自' + tide.st.name + '（距都歷 ' + tide.st.km + ' 公里），預報點是「' + fc.name + '」（距都歷 ' + fc.km + ' 公里），兩者位置不同。');
+  parts.push('氣象署的預報只給滿潮與乾潮的時間和高度，點與點之間的虛線是連接示意，不是預報值。');
+  $('tide-note').textContent = parts.join('');
+
+  const today = d.updated.slice(0, 10);
+  (fc ? fc.events.filter(e => new Date(e.t).getTime() > now).slice(0, 4) : []).forEach(e => {
+    const li = document.createElement('li');
+    const a = document.createElement('span'); a.className = 'when'; a.textContent = (e.t.slice(0, 10) === today ? '今天 ' : e.t.slice(5, 7) + '/' + e.t.slice(8, 10) + ' ') + e.t.slice(11, 16);
+    const b = document.createElement('span'); b.className = 'what'; b.textContent = e.type;
+    const c = document.createElement('span'); c.textContent = isNum(e.twvd_cm) ? fix(e.twvd_cm / 100, 2) + ' 公尺' : '';
+    const g = document.createElement('span'); g.className = 'tag'; g.textContent = e.range ? e.range + '潮' : '';
+    li.append(a, b, c, g); $('tide-next').append(li);
+  });
+}
+
+function row(tag, cells) {
+  const tr = document.createElement('tr');
+  cells.forEach(c => { const td = document.createElement(tag); td.textContent = c; tr.append(td); });
+  return tr;
+}
+function renderWeather(d) {
+  const t = $('wx-table');
+  t.append(row('th', ['測站', '距離', '海拔', '氣溫', '濕度', '風', '天氣', '觀測時間']));
+  (d.weather || []).slice(0, 6).forEach(w => {
+    const wind = !isNum(w.wind_speed) ? '—' : w.wind_speed < 0.3 ? '靜風' : fix(w.wind_speed, 1) + ' 公尺/秒' + (isNum(w.wind_dir) ? ' ' + compass(w.wind_dir) : '');
+    t.append(row('td', [w.name, w.km + ' 公里', isNum(w.alt) ? fix(w.alt, 0) + ' 公尺' : '—', isNum(w.temp) ? fix(w.temp, 1) + ' °C' : '—',
+      isNum(w.rh) ? fix(w.rh, 0) + '%' : '—', wind, w.weather || '—', when(w.t)]));
+  });
+}
+function renderForecast(d) {
+  const f = d.town_forecast; if (!f) return;
+  $('fc-title').textContent = '未來 24 小時預報（' + f.name + '，預報點距都歷 ' + f.km + ' 公里）';
+  const el = name => (f.elements.find(e => e.name === name) || { series: [] }).series;
+  const at = (name, t) => el(name).find(r => r.t === t) || {};
+  const t = $('fc-table');
+  t.append(row('th', ['時段起', '天氣', '氣溫', '降雨機率', '風']));
+  el('天氣現象').slice(0, 8).forEach(w => {
+    const temp = at('溫度', w.t).Temperature, pop = at('3小時降雨機率', w.t).ProbabilityOfPrecipitation;
+    const ws = at('風速', w.t).WindSpeed, wd = at('風向', w.t).WindDirection;
+    t.append(row('td', [when(w.t), w.Weather || '—', temp != null ? temp + ' °C' : '—', pop != null && pop !== '-' ? pop + '%' : '—',
+      ws != null ? ws + ' 公尺/秒' + (wd ? ' ' + wd : '') : '—']));
+  });
+}
+
+fetch('data/latest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => {
+  const ageH = (Date.now() - new Date(d.updated).getTime()) / 3600e3;
+  const st = $('live-status');
+  st.textContent = '最近一次取得資料：' + when(d.updated) + '（臺北時間）。';
+  if (ageH > 3) { const w = document.createElement('span'); w.className = 'warn'; w.textContent = '已超過 ' + Math.floor(ageH) + ' 小時沒有更新，以下數值可能過時。'; st.append(w); }
+  LIVE = d;
+  renderTiles(d); renderTide(d); renderWeather(d); renderForecast(d);
+  // marine stations inside the map extent go onto the 3D map
+  STATIONS = (d.marine || []).filter(s => s.lon >= GRID.lon[0] && s.lon <= GRID.lon[GRID.lon.length - 1] && s.lat <= GRID.lat[0] && s.lat >= GRID.lat[GRID.lat.length - 1]);
+  if (ready) { ready = false; draw(); }
+}).catch(() => { $('live-status').textContent = '讀不到即時資料檔。排程可能尚未執行，或這一次取資料失敗。'; });
 </script>
 </body>
 </html>
