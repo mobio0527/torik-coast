@@ -1,52 +1,43 @@
 {
- "updated": "2026-11-21 12:14",
+ "updated": "2026-11-21 12:19",
  "timezone": "Asia/Taipei",
- "stage": "probe",
+ "stage": "live",
  "datasets": [
   {
-   "id": "O-B0076-001@file",
-   "label": "海象觀測測站資料（檔案介面，候選）",
-   "confirmed": false,
+   "id": "O-B0076-001",
+   "label": "海象測站清單",
    "ok": true,
-   "http": 200,
-   "bytes": 199756,
-   "error": null
+   "seconds": 1.8
   },
   {
-   "id": "O-B0075-002",
-   "label": "海象監測－30 天（候選）",
-   "confirmed": false,
+   "id": "O-B0075-001",
+   "label": "海象觀測（48 小時）",
    "ok": true,
-   "http": 200,
-   "bytes": 25914902,
-   "error": null
+   "seconds": 26.0
   },
   {
-   "id": "C-B0052-001",
-   "label": "測站資料（候選）",
-   "confirmed": false,
-   "ok": false,
-   "http": 404,
-   "bytes": 33,
-   "error": "{\"message\": \"Resource not found.\"}"
-  },
-  {
-   "id": "C-B0052-001@file",
-   "label": "測站資料（檔案介面，候選）",
-   "confirmed": false,
+   "id": "O-A0003-001",
+   "label": "氣象觀測（署屬測站）",
    "ok": true,
-   "http": 200,
-   "bytes": 5115570,
-   "error": null
+   "seconds": 5.7
   },
   {
-   "id": "O-B0075-001@file",
-   "label": "海象監測 48 小時（檔案介面，候選）",
-   "confirmed": false,
-   "ok": false,
-   "http": 404,
-   "bytes": 32,
-   "error": "{\"message\": \"Resouce not found.\"}"
+   "id": "O-A0001-001",
+   "label": "氣象觀測（自動站）",
+   "ok": true,
+   "seconds": 10.7
+  },
+  {
+   "id": "F-A0021-001",
+   "label": "潮汐預報",
+   "ok": true,
+   "seconds": 57.2
+  },
+  {
+   "id": "F-D0047-037",
+   "label": "鄉鎮天氣預報",
+   "ok": true,
+   "seconds": 8.5
   }
  ]
 }
