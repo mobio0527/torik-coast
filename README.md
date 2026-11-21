@@ -34,3 +34,9 @@
 - 沒有潮位與浪高的歷史資料。
 
 颱風資料庫與 CODiS 是查詢網頁，不是有文件的 API，格式可能變動；取不到時會記在檔案的 `problems` 欄位。
+
+## 都歷近景地形（20 公尺）
+
+`data/torik_dtm20.json` 是內政部地政司「2025 年版全臺灣 20 公尺網格數值地形模型 DTM 資料」臺東縣分幅裁切出的都歷周邊 6 × 6 公里（TWD97 二度分帶，高程基準 TWVD2001），依政府資料開放授權條款－第 1 版使用。
+
+來源網站 www.tgos.tw 拒絕 GitHub 排程連線，所以這一步是手動的：下載 `分幅_臺東縣20MDEM(2025).zip` 後執行 `python3 scripts/prep_dtm.py <zip 路徑>`（需要 numpy、pyproj）。原始壓縮檔不放在 repository。

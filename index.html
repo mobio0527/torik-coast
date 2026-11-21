@@ -93,6 +93,7 @@ dl { margin: 0; }
 .live .facts { border-radius: 4px; }
 #tide-plot { width: 100%; height: 300px; }
 #ty-plot { width: 100%; height: 470px; }
+#near-plot { width: 100%; height: min(54vh, 480px); min-height: 320px; }
 #ty-map { width: 100%; height: 340px; }
 .live .row > .label { min-width: 2.6em; }
 .srckey i.band { background: color-mix(in srgb, var(--ink) 9%, transparent); border-color: var(--rule); }
@@ -168,6 +169,19 @@ td small { color: var(--ink-2); }
     </dl>
   </section>
 
+  <section class="live" aria-label="都歷近景地形">
+    <h2>都歷近景：陸地 20 公尺地形</h2>
+    <p class="hint" id="near-status">捲動到這裡時載入。</p>
+    <div id="near-plot"></div>
+    <div class="row"><span class="label">視角</span><div class="btns" id="near-views">
+      <button type="button" data-view="sea" aria-pressed="true">從海上看</button>
+      <button type="button" data-view="top" aria-pressed="false">俯視</button>
+      <button type="button" data-view="south" aria-pressed="false">從南邊看</button>
+    </div></div>
+    <dl class="facts" id="near-tiles"></dl>
+    <p class="hint" id="near-note"></p>
+  </section>
+
   <section class="live" aria-label="即時資料">
     <h2>即時資料</h2>
     <p class="hint" id="live-status">正在讀取即時資料…</p>
@@ -213,6 +227,8 @@ td small { color: var(--ink-2); }
       <li>標示的「都歷」是 23.0236°N, 121.3340°E，聚落東南側的海岸。</li>
       <li>即時數值屬於各測站所在位置，不是都歷海灘本身。每個數值都標了測站名稱與距離。</li>
       <li>潮汐預報只算天文潮，沒有考慮天氣。颱風或強風時，實測潮位會和預報有明顯差距。</li>
+      <li>近景地形的海域是空的：內政部 20 公尺 DTM 只有陸地。藍色平面只是把 0 公尺畫出來，不代表海底，也不代表當下的潮位。</li>
+      <li>不要用近景地形直接判斷哪裡會淹水。把水位往上抬、看哪些格子比它低的作法，沒有考慮波浪、地形阻擋和排水，一格 20 公尺也看不出海堤和消波塊。</li>
       <li>颱風回顧只有風、氣壓、雨量。潮位與浪高的歷史資料目前沒有取得，所以看不到颱風期間的海況。</li>
       <li>GEBCO 網格與本頁的即時資料都不可用於航行或任何與海上安全有關的用途。</li>
     </ul>
@@ -220,7 +236,8 @@ td small { color: var(--ink-2); }
 
   <footer class="source">
     <p>資料來源：GEBCO Compilation Group (2026) GEBCO 2026 Grid (doi:10.5285/4f68d5c7-45eb-f999-e063-7086abc036fa)。於 2026-11-20 自 GEBCO 下載工具取得指定範圍的 GeoTIFF 與資料來源類型（TID）網格。</p>
-    <p>高程為相對平均海平面的公尺數。本頁未對原始格點做平滑或內插。</p>
+    <p>GEBCO 高程為相對平均海平面的公尺數。本頁未對原始格點做平滑或內插。</p>
+    <p>近景地形：內政部地政司「2025 年版全臺灣 20 公尺網格數值地形模型 DTM 資料」臺東縣分幅，依政府資料開放授權條款－第 1 版使用。坐標 TWD97 二度分帶，高程基準 TWVD2001。於 2026-11-21 自 TGOS 下載後裁切都歷周邊 6 × 6 公里。</p>
   </footer>
 </main>
 
@@ -384,8 +401,8 @@ document.getElementById('views').addEventListener('click', e => {
 
 // Redraw when the viewer's theme changes so axis and label colours follow the tokens.
 let LIVE = null;
-let TY = null;
-const retheme = () => { if (ready) { ready = false; draw(); } if (LIVE) renderTide(LIVE); if (TY) renderTyphoon(); };
+let TY = null, NEAR = null;
+const retheme = () => { if (ready) { ready = false; draw(); } if (LIVE) renderTide(LIVE); if (TY) renderTyphoon(); if (NEAR) renderNear(); };
 new MutationObserver(retheme).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', retheme);
 
@@ -690,6 +707,78 @@ fetch('data/typhoons.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : P
   if ((d.problems || []).length) { const w = document.createElement('span'); w.className = 'warn'; w.textContent = '有 ' + d.problems.length + ' 筆資料這次沒有取到，部分數值可能缺漏。'; st.append(w); }
   renderTyphoonTable(); renderTyphoon();
 }).catch(() => { $('ty-status').textContent = '讀不到颱風資料檔。'; });
+
+// ---------- Near view: 20 m land terrain from data/torik_dtm20.json (loaded when scrolled into view) ----------
+const NEAR_VIEWS = {
+  sea:   { eye: { x: 1.15, y: -0.62, z: 0.5 }, center: { x: 0, y: 0, z: -0.08 } },
+  top:   { eye: { x: 0, y: -0.01, z: 1.7 }, center: { x: 0, y: 0, z: 0 } },
+  south: { eye: { x: 0.2, y: -1.45, z: 0.5 }, center: { x: 0, y: 0, z: -0.08 } }
+};
+let nearView = 'sea';
+const LAND_SCALE = [[0, '#f1efe4'], [0.04, '#e2d9b8'], [0.25, '#c2a56a'], [0.5, '#9a7742'], [0.78, '#6c4d2c'], [1, '#45301d']];
+const NEAR_EXAG = 1.5;
+
+function renderNear() {
+  const g = NEAR, ink = css('--ink'), ink2 = css('--ink-2'), rule = css('--rule');
+  const xs = Array.from({ length: g.cols }, (_, j) => (g.e0 + j * g.step_m - g.marker.e) / 1000);
+  const ys = Array.from({ length: g.rows }, (_, i) => (g.n0 + i * g.step_m - g.marker.n) / 1000);
+  const zTop = Math.ceil(g.stats.max / 50) * 50, zLow = -30;
+  const wKm = (g.cols - 1) * g.step_m / 1000, hKm = (g.rows - 1) * g.step_m / 1000;
+  const cell = (xkm, ykm) => { const j = Math.round((xkm * 1000 + g.marker.e - g.e0) / g.step_m), i = Math.round((ykm * 1000 + g.marker.n - g.n0) / g.step_m);
+    return (i >= 0 && i < g.rows && j >= 0 && j < g.cols) ? g.z[i][j] : undefined; };
+  const pins = [{ name: '都歷', x: 0, y: 0 }];
+  ((LIVE && LIVE.weather) || []).forEach(w => {
+    const x = (w.lon - g.marker.lon) * 111.32 * Math.cos(g.marker.lat * Math.PI / 180), y = (w.lat - g.marker.lat) * 110.75;
+    if (cell(x, y) !== undefined) pins.push({ name: w.name + '氣象站', x, y });
+  });
+  const pinTraces = pins.map(p => { const z = cell(p.x, p.y) || 0; return {
+    type: 'scatter3d', mode: 'lines+markers+text', x: [p.x, p.x], y: [p.y, p.y], z: [z, z + 110], text: ['', p.name],
+    textposition: 'top center', textfont: { size: 12, color: ink }, line: { color: ink, width: 3 },
+    marker: { size: [0, 4], color: ink }, hoverinfo: 'skip', showlegend: false }; });
+  const axis = title => ({ title: { text: title, font: { size: 11, color: ink2 } }, tickfont: { size: 10, color: ink2 }, gridcolor: rule, zerolinecolor: rule, showbackground: false, showspikes: false });
+  Plotly.newPlot('near-plot', [
+    { type: 'surface', x: xs, y: ys, z: g.z, colorscale: LAND_SCALE, cmin: 0, cmax: zTop, showscale: false, connectgaps: false,
+      lighting: { ambient: 0.62, diffuse: 0.7, specular: 0.05, roughness: 0.9 }, lightposition: { x: 2000, y: -1500, z: 3000 },
+      hovertemplate: '高程 <b>%{z:.1f}</b> 公尺<br>都歷往東 %{x:.2f} 公里，往北 %{y:.2f} 公里<extra></extra>' },
+    { type: 'surface', x: [xs[0], xs[xs.length - 1]], y: [ys[0], ys[ys.length - 1]], z: [[0, 0], [0, 0]], colorscale: [[0, '#2f76a3'], [1, '#2f76a3']],
+      showscale: false, opacity: 0.55, hoverinfo: 'skip' }
+  ].concat(pinTraces), {
+    margin: { l: 0, r: 0, t: 0, b: 0 }, paper_bgcolor: 'rgba(0,0,0,0)', font: { family: css('--font-body'), color: ink },
+    scene: { aspectmode: 'manual', aspectratio: { x: 1, y: hKm / wKm, z: (zTop - zLow) / 1000 / wKm * NEAR_EXAG },
+      xaxis: axis('東西（公里）'), yaxis: axis('南北（公里）'), zaxis: Object.assign(axis('高程（公尺）'), { range: [zLow, zTop] }),
+      camera: NEAR_VIEWS[nearView], dragmode: 'turntable' },
+    hoverlabel: { bgcolor: css('--panel'), bordercolor: rule, font: { color: ink, size: 13 } }
+  }, { responsive: true, displayModeBar: false, scrollZoom: false });
+}
+
+function setupNear(g) {
+  NEAR = g;
+  const st = g.stats, area = n => fix(n * g.step_m * g.step_m / 1e6, 2) + ' 平方公里', box = $('near-tiles');
+  const wKm = (g.cols - 1) * g.step_m / 1000, hKm = (g.rows - 1) * g.step_m / 1000;
+  $('near-status').textContent = '都歷周邊 ' + fix(wKm, 0) + ' × ' + fix(hKm, 0) + ' 公里，一格 ' + g.step_m + ' 公尺，垂直方向放大 ' + NEAR_EXAG + ' 倍。可以拖曳旋轉。';
+  box.append(tile('格點大小', g.step_m + ' 公尺', '全區圖的 GEBCO 網格約 430 公尺'));
+  box.append(tile('範圍內最高', fix(st.max, 0) + ' 公尺', '最低 ' + fix(st.min, 1) + ' 公尺'));
+  box.append(tile('高程 2 公尺以下的範圍', area(st.land_at_or_below['2']), st.land_at_or_below['2'].toLocaleString() + ' 格'));
+  box.append(tile('高程 5 公尺以下的範圍', area(st.land_at_or_below['5']), st.land_at_or_below['5'].toLocaleString() + ' 格'));
+  box.append(tile('高程基準', 'TWVD2001', '和本頁潮位用的是同一個基準'));
+  const sh = g.sheets[0] || {}, d = sh.header_date || '';
+  $('near-note').textContent = '資料是內政部 20 公尺網格 DTM。檔頭記載：測製方式 ' + (sh.method || '') + '，儀器 ' + (sh.sensor || '') + '，日期 ' +
+    d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) + '。範圍內有 ' + st.empty_cells.toLocaleString() + ' 格沒有資料，都在海上。藍色平面畫在高程 0 公尺。';
+  renderNear();
+  $('near-views').addEventListener('click', e => {
+    const b = e.target.closest('button[data-view]'); if (!b) return;
+    nearView = b.dataset.view;
+    $('near-views').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    Plotly.relayout('near-plot', { 'scene.camera': NEAR_VIEWS[nearView] });
+  });
+}
+new IntersectionObserver((entries, obs) => {
+  if (!entries.some(e => e.isIntersecting)) return;
+  obs.disconnect();
+  $('near-status').textContent = '正在載入 20 公尺地形…';
+  fetch('data/torik_dtm20.json').then(r => r.ok ? r.json() : Promise.reject(r.status)).then(setupNear)
+    .catch(() => { $('near-status').textContent = '讀不到近景地形檔。'; });
+}, { rootMargin: '400px' }).observe($('near-plot'));
 </script>
 </body>
 </html>
