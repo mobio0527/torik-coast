@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Fetch open data from Taiwan's Central Weather Administration (CWA) for the Torik (都歷) coast page.
 
-Writes data/latest.json (what the page reads) and data/status.json (what happened this run).
+Writes data/latest.json (what the page reads) and data/status.json (what happened this run),
+and adds every observation to monthly CSV files under data/archive/ so that a record builds up.
 The API key is read from the CWA_KEY environment variable and is never written to disk.
 
 Datasets (response formats confirmed against live responses on 2026-11-21):
@@ -12,6 +13,7 @@ Datasets (response formats confirmed against live responses on 2026-11-21):
   F-A0021-001             tide forecast, high and low water for the coming month
   F-D0047-037             township forecast, Taitung County, next 3 days
 """
+import csv
 import json
 import math
 import os
@@ -226,6 +228,90 @@ def town_forecast(key):
     return {"name": loc.get("LocationName"), "lat": lat, "lon": lon, "km": d, "elements": elements}
 
 
+# ---------- archive ----------
+
+MARINE_COLS = [("tide_m", "TideHeight"), ("tide_state", "TideLevel"), ("sea_temp_c", "SeaTemperature"),
+               ("air_temp_c", "Temperature"), ("pressure_hpa", "StationPressure"),
+               ("wave_height_m", "WaveHeight"), ("wave_dir_deg", "WaveDirection"), ("wave_period_s", "WavePeriod"),
+               ("wind_speed_ms", "PrimaryAnemometer.WindSpeed"), ("wind_dir_deg", "PrimaryAnemometer.WindDirection"),
+               ("gust_ms", "PrimaryAnemometer.MaximumWindSpeed")]
+WEATHER_COLS = [("weather", "weather"), ("temp_c", "temp"), ("rh_pct", "rh"), ("pressure_hpa", "pressure"),
+                ("rain_today_mm", "rain_today"), ("wind_speed_ms", "wind_speed"), ("wind_dir_deg", "wind_dir"),
+                ("gust_ms", "gust")]
+
+
+def cell(v):
+    if v is None or v == "-":
+        return ""
+    if isinstance(v, float):
+        return ("%.2f" % v).rstrip("0").rstrip(".") if v else "0"
+    return str(v)
+
+
+def archive(kind, cols, rows):
+    """Merge rows into data/archive/<kind>-YYYY-MM.csv, one line per station and observation time.
+
+    A later value replaces an earlier one for the same station and time, except that an empty
+    value never replaces a filled one. Returns the number of new lines."""
+    folder = os.path.join(OUT, "archive")
+    os.makedirs(folder, exist_ok=True)
+    header = ["time", "station_id", "station_name"] + [c for c, _ in cols]
+    by_month = {}
+    for r in rows:
+        if r.get("time") and r.get("station_id") and any(r.get(c) for c, _ in cols):
+            by_month.setdefault(r["time"][:7], []).append(r)
+    added = 0
+    for month, new in sorted(by_month.items()):
+        path = os.path.join(folder, "%s-%s.csv" % (kind, month))
+        merged = {}
+        if os.path.exists(path):
+            with open(path, encoding="utf-8", newline="") as f:
+                for old in csv.DictReader(f):
+                    merged[(old["time"], old["station_id"])] = old
+        for r in new:
+            k = (r["time"], r["station_id"])
+            if k not in merged:
+                merged[k] = {h: r.get(h, "") for h in header}
+                added += 1
+            else:
+                for h in header:
+                    if r.get(h):
+                        merged[k][h] = r[h]
+        with open(path, "w", encoding="utf-8", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=header, extrasaction="ignore", lineterminator="\n")
+            w.writeheader()
+            for k in sorted(merged):
+                w.writerow({h: merged[k].get(h, "") for h in header})
+    return added
+
+
+def archive_all(latest):
+    marine = []
+    for st in latest.get("marine") or []:
+        for o in st.get("obs", []):
+            row = {"time": o.get("t"), "station_id": st["id"], "station_name": st["name"]}
+            row.update({c: cell(o.get(src)) for c, src in MARINE_COLS})
+            marine.append(row)
+    weather = []
+    for st in latest.get("weather") or []:
+        row = {"time": st.get("t"), "station_id": st["id"], "station_name": st["name"]}
+        row.update({c: cell(st.get(src)) for c, src in WEATHER_COLS})
+        weather.append(row)
+    added = {"marine": archive("marine", MARINE_COLS, marine), "weather": archive("weather", WEATHER_COLS, weather)}
+    folder = os.path.join(OUT, "archive")
+    files = []
+    for name in sorted(os.listdir(folder)):
+        if name.endswith(".csv"):
+            with open(os.path.join(folder, name), encoding="utf-8") as f:
+                lines = f.read().splitlines()
+            if len(lines) > 1:
+                times = [l.split(",", 1)[0] for l in lines[1:]]
+                files.append({"file": name, "rows": len(lines) - 1, "first": min(times), "last": max(times)})
+    with open(os.path.join(folder, "index.json"), "w", encoding="utf-8") as f:
+        json.dump({"files": files}, f, ensure_ascii=False, indent=1)
+    return added
+
+
 # ---------- run ----------
 
 def main():
@@ -294,6 +380,10 @@ def main():
         if any(latest.get(k) for k in LABELS):
             with open(os.path.join(OUT, "latest.json"), "w", encoding="utf-8") as f:
                 json.dump(latest, f, ensure_ascii=False, separators=(",", ":"))
+            try:
+                status["archived"] = archive_all(latest)
+            except Exception as e:
+                status["archive_error"] = type(e).__name__ + ": " + str(e)[:200]
 
     with open(os.path.join(OUT, "status.json"), "w", encoding="utf-8") as f:
         json.dump(status, f, ensure_ascii=False, indent=1)
