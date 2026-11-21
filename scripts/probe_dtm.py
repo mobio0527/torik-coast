@@ -30,8 +30,25 @@ def name_of(info):
     return info.filename
 
 
+def reach(url, ua=None):
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": ua} if ua else {})
+        with urllib.request.urlopen(req, timeout=40) as r:
+            r.read(2000)
+            return r.status
+    except Exception as e:
+        return type(e).__name__ + ": " + str(e)[:80]
+
+
 def main():
     out = {"url": URL}
+    # is it this file, or the whole host, that refuses the runner?
+    out["reach"] = {
+        "tgos home": reach("https://www.tgos.tw/"),
+        "tgos file, default client": reach(URL),
+        "dtm.moi.gov.tw home": reach("https://dtm.moi.gov.tw/"),
+        "data.gov.tw dataset page": reach("https://data.gov.tw/dataset/176927"),
+    }
     started = time.time()
     try:
         req = urllib.request.Request(URL, headers={"User-Agent": "torik-coast research page (github.com/mobio0527/torik-coast)"})
