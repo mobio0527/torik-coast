@@ -508,6 +508,14 @@ fetch('data/latest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : Pro
   const st = $('live-status');
   st.textContent = '最近一次取得資料：' + when(d.updated) + '（臺北時間）。';
   if (ageH > 3) { const w = document.createElement('span'); w.className = 'warn'; w.textContent = '已超過 ' + Math.floor(ageH) + ' 小時沒有更新，以下數值可能過時。'; st.append(w); }
+  (d.carried_over || []).forEach(c => {
+    const w = document.createElement('span'); w.className = 'warn';
+    w.textContent = c.label + '這一次沒有取到，顯示的是 ' + when(c.fetched) + ' 取得的資料。'; st.append(w);
+  });
+  ['marine', 'weather', 'tide_forecast', 'town_forecast'].forEach(k => {
+    if (!d[k]) { const w = document.createElement('span'); w.className = 'warn';
+      w.textContent = ({ marine: '海象觀測', weather: '氣象觀測', tide_forecast: '潮汐預報', town_forecast: '鄉鎮天氣預報' })[k] + '目前沒有資料。'; st.append(w); }
+  });
   LIVE = d;
   renderTiles(d); renderTide(d); renderWeather(d); renderForecast(d);
   // marine stations inside the map extent go onto the 3D map

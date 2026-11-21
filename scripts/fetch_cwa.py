@@ -64,8 +64,19 @@ def get(url_base, dataset_id, key, extra=None):
     params.update(extra or {})
     url = url_base + dataset_id + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=120) as r:
-        return json.loads(r.read().decode("utf-8"))
+    last = None
+    for attempt, pause in enumerate((0, 8, 25)):      # the service sometimes resets large downloads
+        time.sleep(pause)
+        try:
+            with urllib.request.urlopen(req, timeout=180) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            if e.code in (401, 403, 404):
+                raise
+            last = e
+        except Exception as e:
+            last = e
+    raise last
 
 
 def flatten(d, prefix=""):
@@ -239,12 +250,31 @@ def main():
                                    "seconds": round(time.time() - started, 1)})
         return None
 
+    # Sections that fail this run keep their last good value, marked with when it was fetched.
+    previous = {}
+    try:
+        with open(os.path.join(OUT, "latest.json"), encoding="utf-8") as f:
+            previous = json.load(f)
+    except Exception:
+        pass
+    fetched = dict(previous.get("fetched") or {})
+    LABELS = {"marine": "海象觀測", "weather": "氣象觀測", "tide_forecast": "潮汐預報", "town_forecast": "鄉鎮天氣預報"}
+
+    def settle(section, value):
+        if value:
+            latest[section] = value
+            fetched[section] = latest["updated"]
+        elif previous.get(section):
+            latest[section] = previous[section]
+            fetched.setdefault(section, previous.get("updated"))
+        else:
+            latest[section] = None
+
     if not key:
         status["note"] = "CWA_KEY secret is not set; nothing was fetched."
     else:
         stations = step("O-B0076-001", "海象測站清單", lambda: marine_stations(key))
-        if stations:
-            latest["marine"] = step("O-B0075-001", "海象觀測（48 小時）", lambda: marine_obs(key, stations))
+        settle("marine", step("O-B0075-001", "海象觀測（48 小時）", lambda: marine_obs(key, stations)) if stations else None)
         staffed = step("O-A0003-001", "氣象觀測（署屬測站）", lambda: weather(key, "O-A0003-001", "署屬氣象站")) or []
         auto = step("O-A0001-001", "氣象觀測（自動站）", lambda: weather(key, "O-A0001-001", "自動氣象站")) or []
         merged = {}
@@ -255,10 +285,13 @@ def main():
                 for k, v in st.items():
                     if merged[st["id"]].get(k) is None and k != "kind":
                         merged[st["id"]][k] = v
-        latest["weather"] = sorted(merged.values(), key=lambda x: x["km"])[:8]
-        latest["tide_forecast"] = step("F-A0021-001", "潮汐預報", lambda: tide_forecast(key))
-        latest["town_forecast"] = step("F-D0047-037", "鄉鎮天氣預報", lambda: town_forecast(key))
-        if any(d["ok"] for d in status["datasets"]):
+        settle("weather", sorted(merged.values(), key=lambda x: x["km"])[:8])
+        settle("tide_forecast", step("F-A0021-001", "潮汐預報", lambda: tide_forecast(key)))
+        settle("town_forecast", step("F-D0047-037", "鄉鎮天氣預報", lambda: town_forecast(key)))
+        latest["fetched"] = fetched
+        latest["carried_over"] = [{"section": k, "label": LABELS[k], "fetched": fetched.get(k)}
+                                  for k in LABELS if latest.get(k) and fetched.get(k) != latest["updated"]]
+        if any(latest.get(k) for k in LABELS):
             with open(os.path.join(OUT, "latest.json"), "w", encoding="utf-8") as f:
                 json.dump(latest, f, ensure_ascii=False, separators=(",", ":"))
 
