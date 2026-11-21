@@ -22,13 +22,15 @@ TPE = timezone(timedelta(hours=8))
 
 # id -> (label, confirmed?)  "confirmed" means the id was checked against CWA documentation.
 DATASETS = {
-    "F-A0021-001": ("潮汐預報－未來 1 個月", True),
-    "F-D0047-037": ("鄉鎮天氣預報－臺東縣未來 3 天", True),
-    "O-B0075-001": ("海象監測－48 小時浮標站與潮位站（候選編號）", False),
-    "O-B0076-001": ("海象觀測測站資料（候選編號）", False),
-    "O-A0001-001": ("自動氣象站觀測（候選編號）", False),
-    "O-A0003-001": ("現在天氣觀測報告（候選編號）", False),
+    # second-round probe: find the dataset that lists marine stations with names and coordinates
+    "O-B0076-001@file": ("海象觀測測站資料（檔案介面，候選）", False),
+    "O-B0075-002": ("海象監測－30 天（候選）", False),
+    "C-B0052-001": ("測站資料（候選）", False),
+    "C-B0052-001@file": ("測站資料（檔案介面，候選）", False),
+    "O-B0075-001@file": ("海象監測 48 小時（檔案介面，候選）", False),
 }
+
+FILE_API = "https://opendata.cwa.gov.tw/fileapi/v1/opendataapi/"
 
 # Places near Torik used to pull out sample records.
 NEAR = ("成功", "東河", "都蘭", "都歷", "富岡", "長濱", "臺東", "台東", "綠島", "蘭嶼")
@@ -83,7 +85,10 @@ def walk(node, names, samples):
 
 
 def fetch(dataset_id, key):
-    url = API + dataset_id + "?" + urllib.parse.urlencode({"Authorization": key, "format": "JSON"})
+    if dataset_id.endswith("@file"):
+        url = FILE_API + dataset_id[:-5] + "?" + urllib.parse.urlencode({"Authorization": key, "downloadType": "WEB", "format": "JSON"})
+    else:
+        url = API + dataset_id + "?" + urllib.parse.urlencode({"Authorization": key, "format": "JSON"})
     started = time.time()
     try:
         with urllib.request.urlopen(urllib.request.Request(url, headers={"Accept": "application/json"}), timeout=90) as r:
@@ -120,7 +125,7 @@ def main():
     else:
         for dataset_id, (label, confirmed) in DATASETS.items():
             info = fetch(dataset_id, key)
-            with open(os.path.join(OUT, "probe", dataset_id + ".json"), "w", encoding="utf-8") as f:
+            with open(os.path.join(OUT, "probe", dataset_id.replace("@", "_") + ".json"), "w", encoding="utf-8") as f:
                 json.dump(info, f, ensure_ascii=False, indent=1)
             status["datasets"].append({
                 "id": dataset_id, "label": label, "confirmed": confirmed,
