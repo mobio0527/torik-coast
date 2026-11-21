@@ -1,7 +1,61 @@
 {
- "updated": "2026-11-21 12:08",
+ "updated": "2026-11-21 12:11",
  "timezone": "Asia/Taipei",
  "stage": "probe",
- "datasets": [],
- "note": "CWA_KEY secret is not set; nothing was fetched."
+ "datasets": [
+  {
+   "id": "F-A0021-001",
+   "label": "潮汐預報－未來 1 個月",
+   "confirmed": true,
+   "ok": true,
+   "http": 200,
+   "bytes": 4828921,
+   "error": null
+  },
+  {
+   "id": "F-D0047-037",
+   "label": "鄉鎮天氣預報－臺東縣未來 3 天",
+   "confirmed": true,
+   "ok": true,
+   "http": 200,
+   "bytes": 766681,
+   "error": null
+  },
+  {
+   "id": "O-B0075-001",
+   "label": "海象監測－48 小時浮標站與潮位站（候選編號）",
+   "confirmed": false,
+   "ok": true,
+   "http": 200,
+   "bytes": 1767845,
+   "error": null
+  },
+  {
+   "id": "O-B0076-001",
+   "label": "海象觀測測站資料（候選編號）",
+   "confirmed": false,
+   "ok": false,
+   "http": 404,
+   "bytes": 33,
+   "error": "{\"message\": \"Resource not found.\"}"
+  },
+  {
+   "id": "O-A0001-001",
+   "label": "自動氣象站觀測（候選編號）",
+   "confirmed": false,
+   "ok": true,
+   "http": 200,
+   "bytes": 884668,
+   "error": null
+  },
+  {
+   "id": "O-A0003-001",
+   "label": "現在天氣觀測報告（候選編號）",
+   "confirmed": false,
+   "ok": true,
+   "http": 200,
+   "bytes": 440777,
+   "error": null
+  }
+ ]
 }
