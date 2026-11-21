@@ -54,6 +54,7 @@ def main(path):
             sheets.append({"sheet": name[:-7], "name": h[0], "method": h[13], "sensor": h[14],
                            "header_date": h[19], "agency": h[20], "datum": h[2], "height_datum": h[3],
                            "cells": int(m.sum())})
+    grid = np.round(grid, 1)      # the page works from the one-decimal values, so count from them too
     land = np.isfinite(grid)
     z_land = grid[land]
     corners = {k: [round(v, 6) for v in to_ll.transform(e, n)] for k, (e, n) in

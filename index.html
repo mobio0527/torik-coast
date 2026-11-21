@@ -93,6 +93,7 @@ dl { margin: 0; }
 .live .facts { border-radius: 4px; }
 #tide-plot { width: 100%; height: 300px; }
 #ty-plot { width: 100%; height: 470px; }
+button:disabled { opacity: .45; cursor: default; }
 #near-plot { width: 100%; height: min(54vh, 480px); min-height: 320px; }
 #ty-map { width: 100%; height: 340px; }
 .live .row > .label { min-width: 2.6em; }
@@ -177,7 +178,22 @@ td small { color: var(--ink-2); }
       <button type="button" data-view="sea" aria-pressed="true">從海上看</button>
       <button type="button" data-view="top" aria-pressed="false">俯視</button>
       <button type="button" data-view="south" aria-pressed="false">從南邊看</button>
+      <button type="button" data-view="close" aria-pressed="false">都歷放大</button>
     </div></div>
+    <h3>水位情境</h3>
+    <div class="row">
+      <span class="label" id="lvl-label">水位</span>
+      <input type="range" id="near-level" min="-1" max="5" step="0.1" value="0" aria-labelledby="lvl-label">
+      <output id="near-level-out" for="near-level">0.0 公尺</output>
+    </div>
+    <div class="row"><span class="label">設為</span><div class="btns" id="near-presets">
+      <button type="button" data-preset="now" disabled>目前潮位</button>
+      <button type="button" data-preset="high" disabled>下一次滿潮</button>
+      <button type="button" data-preset="low" disabled>下一次乾潮</button>
+      <button type="button" data-preset="zero">0 公尺</button>
+    </div></div>
+    <p class="hint" id="near-flood"></p>
+    <p class="hint"><span class="warn">這是示意，不是淹水預測。</span>深藍色只表示「高程低於這個水位、而且和海相連」的格子，沒有算波浪、海堤、排水，一格是 20 公尺。</p>
     <dl class="facts" id="near-tiles"></dl>
     <p class="hint" id="near-note"></p>
   </section>
@@ -227,7 +243,7 @@ td small { color: var(--ink-2); }
       <li>標示的「都歷」是 23.0236°N, 121.3340°E，聚落東南側的海岸。</li>
       <li>即時數值屬於各測站所在位置，不是都歷海灘本身。每個數值都標了測站名稱與距離。</li>
       <li>潮汐預報只算天文潮，沒有考慮天氣。颱風或強風時，實測潮位會和預報有明顯差距。</li>
-      <li>近景地形的海域是空的：內政部 20 公尺 DTM 只有陸地。藍色平面只是把 0 公尺畫出來，不代表海底，也不代表當下的潮位。</li>
+      <li>近景地形的海域是空的：內政部 20 公尺 DTM 只有陸地。淺藍色平面是設定的水位，不代表海底。預設水位取成功潮位站的最新實測值，那裡距都歷 9.4 公里，不是都歷當地的潮位。</li>
       <li>不要用近景地形直接判斷哪裡會淹水。把水位往上抬、看哪些格子比它低的作法，沒有考慮波浪、地形阻擋和排水，一格 20 公尺也看不出海堤和消波塊。</li>
       <li>颱風回顧只有風、氣壓、雨量。潮位與浪高的歷史資料目前沒有取得，所以看不到颱風期間的海況。</li>
       <li>GEBCO 網格與本頁的即時資料都不可用於航行或任何與海上安全有關的用途。</li>
@@ -562,6 +578,7 @@ fetch('data/latest.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : Pro
   });
   LIVE = d;
   renderTiles(d); renderTide(d); renderWeather(d); renderForecast(d);
+  if (NEAR) nearPresets();
   // marine stations inside the map extent go onto the 3D map
   STATIONS = (d.marine || []).filter(s => s.lon >= GRID.lon[0] && s.lon <= GRID.lon[GRID.lon.length - 1] && s.lat <= GRID.lat[0] && s.lat >= GRID.lat[GRID.lat.length - 1]);
   if (ready) { ready = false; draw(); }
@@ -709,14 +726,62 @@ fetch('data/typhoons.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : P
 }).catch(() => { $('ty-status').textContent = '讀不到颱風資料檔。'; });
 
 // ---------- Near view: 20 m land terrain from data/torik_dtm20.json (loaded when scrolled into view) ----------
+const NEAR_CX = 0.14;
 const NEAR_VIEWS = {
   sea:   { eye: { x: 1.15, y: -0.62, z: 0.5 }, center: { x: 0, y: 0, z: -0.08 } },
   top:   { eye: { x: 0, y: -0.01, z: 1.7 }, center: { x: 0, y: 0, z: 0 } },
-  south: { eye: { x: 0.2, y: -1.45, z: 0.5 }, center: { x: 0, y: 0, z: -0.08 } }
+  south: { eye: { x: 0.2, y: -1.45, z: 0.5 }, center: { x: 0, y: 0, z: -0.08 } },
+  close: { eye: { x: NEAR_CX, y: -0.012, z: 0.5 }, center: { x: NEAR_CX, y: 0, z: -0.1 } }
 };
-let nearView = 'sea';
-const LAND_SCALE = [[0, '#f1efe4'], [0.04, '#e2d9b8'], [0.25, '#c2a56a'], [0.5, '#9a7742'], [0.78, '#6c4d2c'], [1, '#45301d']];
+let nearView = 'sea', nearLevel = 0, nearTouched = false, nearSource = '';
+// The first 2% of the scale is the water colour; cells under water get the lowest value.
+const WATER = '#15466f', F0 = 0.02;
+const LAND_SCALE = [[0, WATER], [F0 * 0.6, WATER]].concat(
+  [[0, '#f1efe4'], [0.04, '#e2d9b8'], [0.25, '#c2a56a'], [0.5, '#9a7742'], [0.78, '#6c4d2c'], [1, '#45301d']].map(([t, c]) => [F0 + t * (1 - F0), c]));
 const NEAR_EXAG = 1.5;
+
+// Cells at or below `level` that touch the sea (cells without data) through other such cells.
+function floodMask(level) {
+  const g = NEAR, R = g.rows, C = g.cols, z = g.z, m = new Uint8Array(R * C), q = [];
+  const tryCell = (i, j) => { if (i < 0 || j < 0 || i >= R || j >= C) return; const v = z[i][j];
+    if (v === null || v > level || m[i * C + j]) return; m[i * C + j] = 1; q.push(i * C + j); };
+  for (let i = 0; i < R; i++) for (let j = 0; j < C; j++) if (z[i][j] === null) { tryCell(i + 1, j); tryCell(i - 1, j); tryCell(i, j + 1); tryCell(i, j - 1); }
+  for (let k = 0; k < q.length; k++) { const i = Math.floor(q[k] / C), j = q[k] % C; tryCell(i + 1, j); tryCell(i - 1, j); tryCell(i, j + 1); tryCell(i, j - 1); }
+  return { mask: m, count: q.length };
+}
+function nearColours(level) {
+  const g = NEAR, C = g.cols, f = floodMask(level), zTop = Math.ceil(g.stats.max / 50) * 50, wet = -zTop * F0 / (1 - F0);
+  return { count: f.count, cmin: wet, cmax: zTop,
+    colour: g.z.map((row, i) => row.map((v, j) => v === null ? null : f.mask[i * C + j] ? wet : Math.max(v, 0))) };
+}
+const signed = v => (v > 0 ? '+' : '') + fix(v, Math.abs(v * 10 - Math.round(v * 10)) < 1e-6 ? 1 : 2);
+function nearText(count) {
+  const g = NEAR, km2 = n => fix(n * g.step_m * g.step_m / 1e6, 2);
+  $('near-level-out').textContent = signed(nearLevel) + ' 公尺';
+  const parts = [(nearSource ? '水位取自' + nearSource + '。' : '') + '水位 ' + signed(nearLevel) + ' 公尺（TWVD2001）時，和海相連、高程低於水位的範圍是 ' + km2(count) + ' 平方公里（' + count.toLocaleString() + ' 格）。'];
+  const fc = LIVE && LIVE.tide_forecast;
+  if (fc) {
+    const h = fc.events.map(e => e.twvd_cm).filter(isNum);
+    if (h.length) parts.push('對照：氣象署對「' + fc.name + '」未來一個月的預報潮高在 ' + signed(Math.min(...h) / 100) + ' 到 ' + signed(Math.max(...h) / 100) + ' 公尺之間，只算天文潮。');
+  }
+  $('near-flood').textContent = parts.join('');
+}
+function applyLevel() {
+  const c = nearColours(nearLevel), L = nearLevel;
+  Plotly.restyle('near-plot', { surfacecolor: [c.colour] }, [0]);
+  Plotly.restyle('near-plot', { z: [[[L, L], [L, L]]] }, [1]);
+  nearText(c.count);
+}
+function nearPresets() {
+  if (!NEAR) return;
+  const now = LIVE && pick(LIVE.marine, 'TideHeight'), fc = LIVE && LIVE.tide_forecast, t0 = LIVE ? new Date(LIVE.updated).getTime() : 0;
+  const next = type => fc && fc.events.find(e => e.type === type && isNum(e.twvd_cm) && new Date(e.t).getTime() > t0);
+  const val = { now: now ? now.row.TideHeight : null, high: next('滿潮') ? next('滿潮').twvd_cm / 100 : null, low: next('乾潮') ? next('乾潮').twvd_cm / 100 : null, zero: 0 };
+  const tip = { now: now ? now.st.name + ' ' + when(now.row.t) + ' 實測' : '', high: next('滿潮') ? fc.name + ' ' + when(next('滿潮').t) + ' 預報' : '', low: next('乾潮') ? fc.name + ' ' + when(next('乾潮').t) + ' 預報' : '', zero: '' };
+  $('near-presets').querySelectorAll('button').forEach(b => { const v = val[b.dataset.preset]; b.disabled = v === null; b.dataset.value = v === null ? '' : v; b.title = tip[b.dataset.preset]; });
+  if (!nearTouched && val.now !== null) { nearLevel = Math.round(val.now * 100) / 100; nearSource = tip.now; $('near-level').value = nearLevel; applyLevel(); }
+  else nearText(floodMask(nearLevel).count);
+}
 
 function renderNear() {
   const g = NEAR, ink = css('--ink'), ink2 = css('--ink-2'), rule = css('--rule');
@@ -735,12 +800,13 @@ function renderNear() {
     type: 'scatter3d', mode: 'lines+markers+text', x: [p.x, p.x], y: [p.y, p.y], z: [z, z + 110], text: ['', p.name],
     textposition: 'top center', textfont: { size: 12, color: ink }, line: { color: ink, width: 3 },
     marker: { size: [0, 4], color: ink }, hoverinfo: 'skip', showlegend: false }; });
+  const col = nearColours(nearLevel);
   const axis = title => ({ title: { text: title, font: { size: 11, color: ink2 } }, tickfont: { size: 10, color: ink2 }, gridcolor: rule, zerolinecolor: rule, showbackground: false, showspikes: false });
   Plotly.newPlot('near-plot', [
-    { type: 'surface', x: xs, y: ys, z: g.z, colorscale: LAND_SCALE, cmin: 0, cmax: zTop, showscale: false, connectgaps: false,
+    { type: 'surface', x: xs, y: ys, z: g.z, surfacecolor: col.colour, colorscale: LAND_SCALE, cmin: col.cmin, cmax: col.cmax, showscale: false, connectgaps: false,
       lighting: { ambient: 0.62, diffuse: 0.7, specular: 0.05, roughness: 0.9 }, lightposition: { x: 2000, y: -1500, z: 3000 },
       hovertemplate: '高程 <b>%{z:.1f}</b> 公尺<br>都歷往東 %{x:.2f} 公里，往北 %{y:.2f} 公里<extra></extra>' },
-    { type: 'surface', x: [xs[0], xs[xs.length - 1]], y: [ys[0], ys[ys.length - 1]], z: [[0, 0], [0, 0]], colorscale: [[0, '#2f76a3'], [1, '#2f76a3']],
+    { type: 'surface', x: [xs[0], xs[xs.length - 1]], y: [ys[0], ys[ys.length - 1]], z: [[nearLevel, nearLevel], [nearLevel, nearLevel]], colorscale: [[0, '#2f76a3'], [1, '#2f76a3']],
       showscale: false, opacity: 0.55, hoverinfo: 'skip' }
   ].concat(pinTraces), {
     margin: { l: 0, r: 0, t: 0, b: 0 }, paper_bgcolor: 'rgba(0,0,0,0)', font: { family: css('--font-body'), color: ink },
@@ -763,8 +829,19 @@ function setupNear(g) {
   box.append(tile('高程基準', 'TWVD2001', '和本頁潮位用的是同一個基準'));
   const sh = g.sheets[0] || {}, d = sh.header_date || '';
   $('near-note').textContent = '資料是內政部 20 公尺網格 DTM。檔頭記載：測製方式 ' + (sh.method || '') + '，儀器 ' + (sh.sensor || '') + '，日期 ' +
-    d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) + '。範圍內有 ' + st.empty_cells.toLocaleString() + ' 格沒有資料，都在海上。藍色平面畫在高程 0 公尺。';
+    d.slice(0, 4) + '-' + d.slice(4, 6) + '-' + d.slice(6, 8) + '。範圍內有 ' + st.empty_cells.toLocaleString() + ' 格沒有資料，都在海上。淺藍色平面畫在下方設定的水位。';
   renderNear();
+  nearPresets();
+  let pending = false;
+  $('near-level').addEventListener('input', e => {
+    nearLevel = Number(e.target.value); nearTouched = true; nearSource = ''; $('near-level-out').textContent = signed(nearLevel) + ' 公尺';
+    if (pending) return; pending = true;
+    requestAnimationFrame(() => { pending = false; applyLevel(); });
+  });
+  $('near-presets').addEventListener('click', e => {
+    const b = e.target.closest('button[data-preset]'); if (!b || b.disabled) return;
+    nearLevel = Math.round(Number(b.dataset.value) * 100) / 100; nearTouched = true; nearSource = b.title; $('near-level').value = nearLevel; applyLevel();
+  });
   $('near-views').addEventListener('click', e => {
     const b = e.target.closest('button[data-view]'); if (!b) return;
     nearView = b.dataset.view;
