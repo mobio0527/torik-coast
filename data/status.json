@@ -1,5 +1,5 @@
 {
- "updated": "2026-11-26 12:21",
+ "updated": "2026-11-26 22:22",
  "timezone": "Asia/Taipei",
  "stage": "live",
  "datasets": [
@@ -7,41 +7,42 @@
    "id": "O-B0076-001",
    "label": "海象測站清單",
    "ok": true,
-   "seconds": 2.4
+   "seconds": 2.0
   },
   {
    "id": "O-B0075-001",
    "label": "海象觀測（48 小時）",
    "ok": true,
-   "seconds": 6.8
+   "seconds": 34.9
   },
   {
    "id": "O-A0003-001",
    "label": "氣象觀測（署屬測站）",
    "ok": true,
-   "seconds": 4.9
+   "seconds": 4.1
   },
   {
    "id": "O-A0001-001",
    "label": "氣象觀測（自動站）",
    "ok": true,
-   "seconds": 13.1
+   "seconds": 27.1
   },
   {
    "id": "F-A0021-001",
    "label": "潮汐預報",
-   "ok": true,
-   "seconds": 38.5
+   "ok": false,
+   "error": "TimeoutError: The read operation timed out",
+   "seconds": 258.1
   },
   {
    "id": "F-D0047-037",
    "label": "鄉鎮天氣預報",
    "ok": true,
-   "seconds": 12.2
+   "seconds": 34.3
   }
  ],
  "archived": {
-  "marine": 35,
+  "marine": 60,
   "weather": 8
  }
 }
